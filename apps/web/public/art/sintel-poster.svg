@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" width="600" height="900" role="img" aria-label="Poster Sintel">
+  <defs>
+    <linearGradient id="s1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2350"/>
+      <stop offset="0.45" stop-color="#5b3a6e"/>
+      <stop offset="1" stop-color="#120f22"/>
+    </linearGradient>
+    <radialGradient id="s2" cx="0.5" cy="0.3" r="0.55">
+      <stop offset="0" stop-color="#ffb27a" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#ffb27a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#s1)"/>
+  <circle cx="300" cy="270" r="250" fill="url(#s2)"/>
+  <path d="M0 660c120-80 210-10 300-60s180-80 300-20v320H0Z" fill="#1a1430"/>
+  <path d="M0 760c140-40 250 20 360-10s170-40 240-10v160H0Z" fill="#0d0a1a"/>
+  <g transform="translate(300 560)">
+    <path d="M-60 120c0-90 30-150 60-150s60 60 60 150Z" fill="#2f2a45"/>
+    <circle cx="0" cy="-58" r="52" fill="#e8c9a8"/>
+    <path d="M-58-70c0-52 28-78 58-78s58 26 58 78c-16-18-34-26-58-26s-42 8-58 26Z" fill="#8b3b2c"/>
+    <path d="M-52-46c14 12 90 12 104 0" stroke="#8b3b2c" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <circle cx="-18" cy="-58" r="5" fill="#241d33"/>
+    <circle cx="18" cy="-58" r="5" fill="#241d33"/>
+  </g>
+  <rect width="600" height="900" fill="#000" opacity="0.16"/>
+  <text x="48" y="790" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="700" fill="#ffffff" opacity="0.9">BLENDER OPEN MOVIE</text>
+  <text x="48" y="838" font-family="Inter, system-ui, sans-serif" font-size="64" font-weight="800" fill="#ffffff">Sintel</text>
+  <text x="48" y="872" font-family="Inter, system-ui, sans-serif" font-size="22" fill="#ffffff" opacity="0.6">CC BY 3.0 · 2010</text>
+</svg>

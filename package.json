@@ -1,0 +1,45 @@
+{
+  "name": "aninusa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AniNusa - a production-grade anime streaming platform for Indonesian audiences",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @aninusa/web",
+    "dev:worker": "npm run dev -w @aninusa/worker",
+    "build": "npm run db:generate && npm run build -w @aninusa/web",
+    "start": "npm run start -w @aninusa/web",
+    "lint": "eslint apps packages --ext .ts,.tsx --max-warnings=0",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "vitest run packages/database/src/ingest.test.ts",
+    "db:generate": "npm run db:generate -w @aninusa/database",
+    "db:migrate": "npm run db:migrate -w @aninusa/database",
+    "db:deploy": "npm run db:deploy -w @aninusa/database",
+    "db:seed": "npm run db:seed -w @aninusa/database",
+    "db:studio": "npm run db:studio -w @aninusa/database",
+    "postinstall": "npm run db:generate"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.3",
+    "@types/react-dom": "^19.0.2",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.0",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

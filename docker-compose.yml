@@ -1,0 +1,130 @@
+name: aninusa
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aninusa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aninusa}
+      POSTGRES_DB: ${POSTGRES_DB:-aninusa}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aninusa} -d ${POSTGRES_DB:-aninusa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aninusa}:${POSTGRES_PASSWORD:-aninusa}@postgres:5432/${POSTGRES_DB:-aninusa}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: .
+      target: migrator
+    command: ["npx", "tsx", "packages/database/prisma/seed.ts"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aninusa}:${POSTGRES_PASSWORD:-aninusa}@postgres:5432/${POSTGRES_DB:-aninusa}?schema=public
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@aninusa.local}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
+      SEED_ANILIST: ${SEED_ANILIST:-true}
+      ANILIST_ENABLED: ${ANILIST_ENABLED:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["seed"]
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aninusa}:${POSTGRES_PASSWORD:-aninusa}@postgres:5432/${POSTGRES_DB:-aninusa}?schema=public
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-aninusa_session}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-AniNusa}
+      SUBTITLE_HOST_ALLOWLIST: ${SUBTITLE_HOST_ALLOWLIST:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aninusa}:${POSTGRES_PASSWORD:-aninusa}@postgres:5432/${POSTGRES_DB:-aninusa}?schema=public
+      REDIS_URL: redis://redis:6379
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      OPEN_MEDIA_ENABLED: ${OPEN_MEDIA_ENABLED:-true}
+      ANILIST_ENABLED: ${ANILIST_ENABLED:-true}
+      ANILIST_RATE_LIMIT_PER_MINUTE: ${ANILIST_RATE_LIMIT_PER_MINUTE:-80}
+      INGEST_MAX_EPISODES: ${INGEST_MAX_EPISODES:-60}
+      SOURCE_HEALTH_INTERVAL_MINUTES: ${SOURCE_HEALTH_INTERVAL_MINUTES:-15}
+      SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-360}
+      HEALTH_CHECK_TIMEOUT_MS: ${HEALTH_CHECK_TIMEOUT_MS:-10000}
+      WORKER_PORT: 4001
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${WORKER_PORT:-4001}:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
+  redis-data:
+

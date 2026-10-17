@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1.7
+# ---------------------------------------------------------------------------
+# AniNusa background worker (ingestion + source health)
+# ---------------------------------------------------------------------------
+
+FROM node:22-alpine AS base
+RUN apk add --no-cache libc6-compat openssl
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+
+FROM base AS deps
+COPY package.json package-lock.json* ./
+COPY apps/web/package.json apps/web/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/types/package.json packages/types/package.json
+COPY packages/utils/package.json packages/utils/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/source-adapters/package.json packages/source-adapters/package.json
+COPY packages/services/package.json packages/services/package.json
+COPY packages/player/package.json packages/player/package.json
+RUN npm ci --ignore-scripts
+
+FROM deps AS runner
+COPY . .
+ENV NODE_ENV=production
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
+RUN npx prisma generate --schema packages/database/prisma/schema.prisma
+
+USER node
+EXPOSE 4001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -q -O - http://127.0.0.1:4001/healthz || exit 1
+
+CMD ["npx", "tsx", "apps/worker/src/index.ts"]

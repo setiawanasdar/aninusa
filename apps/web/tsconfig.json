@@ -1,0 +1,46 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@aninusa/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@aninusa/utils": [
+        "../../packages/utils/src/index.ts"
+      ],
+      "@aninusa/database": [
+        "../../packages/database/src/index.ts"
+      ],
+      "@aninusa/source-adapters": [
+        "../../packages/source-adapters/src/index.ts"
+      ],
+      "@aninusa/services": [
+        "../../packages/services/src/index.ts"
+      ],
+      "@aninusa/player": [
+        "../../packages/player/src/index.ts"
+      ]
+    },
+    "allowJs": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

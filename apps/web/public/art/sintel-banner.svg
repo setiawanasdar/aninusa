@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-label="Banner Sintel">
+  <defs>
+    <linearGradient id="sb1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#241f47"/>
+      <stop offset="0.5" stop-color="#5b3a6e"/>
+      <stop offset="1" stop-color="#120f22"/>
+    </linearGradient>
+    <radialGradient id="sb2" cx="0.68" cy="0.3" r="0.6">
+      <stop offset="0" stop-color="#ffb27a" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#ffb27a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sb1)"/>
+  <circle cx="1080" cy="260" r="420" fill="url(#sb2)"/>
+  <path d="M0 640c220-100 380-10 560-60s420-120 640-40 300 60 400 30v330H0Z" fill="#1a1430"/>
+  <path d="M0 750c260-60 460 40 700-10s520-80 900-10v170H0Z" fill="#0d0a1a"/>
+  <g transform="translate(1140 560) scale(1.7)">
+    <path d="M-60 120c0-90 30-150 60-150s60 60 60 150Z" fill="#2f2a45"/>
+    <circle cx="0" cy="-58" r="52" fill="#e8c9a8"/>
+    <path d="M-58-70c0-52 28-78 58-78s58 26 58 78c-16-18-34-26-58-26s-42 8-58 26Z" fill="#8b3b2c"/>
+  </g>
+</svg>

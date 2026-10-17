@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" width="600" height="900" role="img" aria-label="Poster Big Buck Bunny">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d3f2b"/>
+      <stop offset="0.55" stop-color="#2f6b42"/>
+      <stop offset="1" stop-color="#14251a"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.35" r="0.5">
+      <stop offset="0" stop-color="#ffe7a3" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffe7a3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#sky)"/>
+  <circle cx="300" cy="300" r="230" fill="url(#sun)"/>
+  <path d="M0 720c90-60 160-20 230-50s150-80 220-40 110 30 150 10v260H0Z" fill="#0f1c14"/>
+  <path d="M0 790c110-50 190 10 280-20s180-60 320-10v140H0Z" fill="#0a130e"/>
+  <g fill="#f3f3f3">
+    <ellipse cx="300" cy="600" rx="105" ry="120"/>
+    <ellipse cx="300" cy="452" rx="72" ry="66"/>
+    <ellipse cx="252" cy="358" rx="24" ry="76" transform="rotate(-12 252 358)"/>
+    <ellipse cx="348" cy="358" rx="24" ry="76" transform="rotate(12 348 358)"/>
+  </g>
+  <g fill="#1b1b1b">
+    <circle cx="278" cy="448" r="8"/>
+    <circle cx="322" cy="448" r="8"/>
+    <path d="M286 480q14 12 28 0" stroke="#1b1b1b" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </g>
+  <rect x="0" y="0" width="600" height="900" fill="#000" opacity="0.18"/>
+  <text x="48" y="790" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="700" fill="#ffffff" opacity="0.9">BLENDER OPEN MOVIE</text>
+  <text x="48" y="836" font-family="Inter, system-ui, sans-serif" font-size="52" font-weight="800" fill="#ffffff">Big Buck Bunny</text>
+  <text x="48" y="870" font-family="Inter, system-ui, sans-serif" font-size="22" fill="#ffffff" opacity="0.6">CC BY 3.0 · 2008</text>
+</svg>

@@ -1,0 +1,22 @@
+{
+  "name": "@aninusa/worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aninusa/database": "*",
+    "@aninusa/services": "*",
+    "@aninusa/source-adapters": "*",
+    "@aninusa/types": "*",
+    "@aninusa/utils": "*",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2"
+  }
+}

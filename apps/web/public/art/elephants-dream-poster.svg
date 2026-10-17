@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" width="600" height="900" role="img" aria-label="Poster Elephants Dream">
+  <defs>
+    <linearGradient id="e1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2a33"/>
+      <stop offset="0.5" stop-color="#3c5a63"/>
+      <stop offset="1" stop-color="#0c1216"/>
+    </linearGradient>
+    <radialGradient id="e2" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#9fe6ff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#9fe6ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#e1)"/>
+  <circle cx="300" cy="360" r="260" fill="url(#e2)"/>
+  <g stroke="#bfe9f5" stroke-width="2" opacity="0.35" fill="none">
+    <path d="M-40 420 260 220l300 180-280 200Z"/>
+    <path d="M60 520 300 360l220 130-200 150Z"/>
+    <path d="M120 640 320 500l160 90-150 120Z"/>
+    <path d="M260 220v420M520 400 280 620"/>
+  </g>
+  <g transform="translate(300 520)">
+    <circle cx="-60" cy="-40" r="42" fill="#2c3c44"/>
+    <path d="M-96 40c0-60 18-96 36-96s36 36 36 96Z" fill="#2c3c44"/>
+    <circle cx="60" cy="-10" r="34" fill="#374b55"/>
+    <path d="M30 60c0-48 14-78 30-78s30 30 30 78Z" fill="#374b55"/>
+  </g>
+  <rect width="600" height="900" fill="#000" opacity="0.2"/>
+  <text x="48" y="778" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="700" fill="#ffffff" opacity="0.9">BLENDER OPEN MOVIE</text>
+  <text x="48" y="824" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="800" fill="#ffffff">Elephants Dream</text>
+  <text x="48" y="860" font-family="Inter, system-ui, sans-serif" font-size="22" fill="#ffffff" opacity="0.6">CC BY 2.5 · 2006</text>
+</svg>
