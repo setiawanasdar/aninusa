@@ -44,10 +44,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         return;
       }
 
-      router.refresh();
+      const userRole = (payload?.data as { role?: string } | undefined)?.role;
+      const defaultDest = userRole === "ADMIN" || userRole === "MODERATOR" ? "/admin" : "/";
       const destination =
-        next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
-      router.push(destination);
+        next && next.startsWith("/") && !next.startsWith("//") ? next : defaultDest;
+      window.location.href = destination;
     } catch {
       setError("Tidak dapat menghubungi server. Periksa koneksi Anda.");
     } finally {

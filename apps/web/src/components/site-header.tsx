@@ -115,6 +115,16 @@ export function SiteHeader({ user }: SiteHeaderProps) {
             <Search className="h-5 w-5" aria-hidden="true" />
           </button>
 
+          {user && (user.role === "ADMIN" || user.role === "MODERATOR") && (
+            <Link
+              href="/admin"
+              className="hidden items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/15 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/25 sm:flex"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" aria-hidden="true" />
+              Dasbor Admin
+            </Link>
+          )}
+
           {user ? (
             <div ref={menuRef} className="relative">
               <button
@@ -219,6 +229,34 @@ export function SiteHeader({ user }: SiteHeaderProps) {
                 {item.label}
               </Link>
             ))}
+            {user && (
+              <div className="border-t border-white/10 pt-2 space-y-1">
+                {(user.role === "ADMIN" || user.role === "MODERATOR") && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-semibold text-accent hover:bg-white/[0.06]"
+                  >
+                    <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                    Dasbor Admin
+                  </Link>
+                )}
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-white/75 hover:bg-white/[0.06] hover:text-white"
+                >
+                  <UserIcon className="h-4 w-4" aria-hidden="true" />
+                  Profil saya ({user.username})
+                </Link>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm text-red-400 hover:bg-white/[0.06]"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                  Keluar
+                </button>
+              </div>
+            )}
             {!user && (
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Link href="/login" className="btn-secondary">
