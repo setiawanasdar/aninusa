@@ -43,6 +43,24 @@ async function seedProviders() {
   });
 
   await prisma.provider.upsert({
+    where: { key: "anikoto" },
+    update: {
+      enabled: true,
+      kind: "METADATA",
+      name: "AniKoto (Anime API & Streams)",
+      baseUrl: "https://anikototvapi.vercel.app/api",
+    },
+    create: {
+      key: "anikoto",
+      name: "AniKoto (Anime API & Streams)",
+      kind: "METADATA",
+      baseUrl: "https://anikototvapi.vercel.app/api",
+      enabled: true,
+      config: { attribution: "AniKoto REST API", video: true },
+    },
+  });
+
+  await prisma.provider.upsert({
     where: { key: "restricted-example" },
     update: { enabled: false },
     create: {

@@ -1,9 +1,10 @@
 import { requireAdminPage } from "@/lib/page-auth";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, RefreshCw, Search, Sparkles } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { Pagination } from "@/components/pagination";
+import { AniKotoImporter } from "@/components/admin/anikoto-importer";
 import { pageToSkip } from "@aninusa/utils";
 
 interface AdminAnimePageProps {
@@ -56,10 +57,30 @@ export default async function AdminAnimePage({ searchParams }: AdminAnimePagePro
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Kelola anime</h1>
           <p className="mt-0.5 text-sm text-white/45">{total.toLocaleString("id-ID")} judul di katalog.</p>
         </div>
-        <Link href="/admin/anime/new" className="btn-primary">
-          <Plus className="h-4 w-4" aria-hidden="true" /> Tambah anime
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/admin/providers" className="btn-secondary">
+            <RefreshCw className="h-4 w-4" aria-hidden="true" /> Sinkronisasi Provider
+          </Link>
+          <Link href="/admin/anime/new" className="btn-primary">
+            <Plus className="h-4 w-4" aria-hidden="true" /> Tambah / Import Anime
+          </Link>
+        </div>
       </header>
+
+      <section className="surface p-4">
+        <details className="group">
+          <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-white/80 hover:text-white">
+            <span className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-accent" />
+              Cari &amp; Import Cepat dari AniKoto API
+            </span>
+            <span className="text-xs text-white/40 group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+          <div className="pt-4 border-t border-white/10 mt-3">
+            <AniKotoImporter />
+          </div>
+        </details>
+      </section>
 
       <form className="relative max-w-md" action="/admin/anime" method="get">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" aria-hidden="true" />

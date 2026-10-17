@@ -18,6 +18,8 @@ const nextConfig = {
       { protocol: "https", hostname: "s4.anilist.co" },
       { protocol: "https", hostname: "img.anili.st" },
       { protocol: "https", hostname: "cdn.myanimelist.net" },
+      { protocol: "https", hostname: "cdn.anipixcdn.co" },
+      { protocol: "https", hostname: "*.anipixcdn.co" },
     ],
     minimumCacheTTL: 86_400,
     // Posters/banners in this project are first-party SVGs. Next requires this

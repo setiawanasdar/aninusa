@@ -74,6 +74,7 @@ export interface ProviderRegistry {
 export interface ProviderRuntimeConfig {
   anilistEnabled: boolean;
   openMediaEnabled: boolean;
+  anikotoEnabled?: boolean;
   anilistRateLimitPerMinute: number;
   ingestMaxEpisodes: number;
   requestTimeoutMs: number;

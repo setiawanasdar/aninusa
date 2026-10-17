@@ -1,4 +1,5 @@
 import { AniListProvider } from "./providers/anilist";
+import { AniKotoProvider } from "./providers/anikoto";
 import { OpenMediaProvider } from "./providers/open-media";
 import { RestrictedProviderExample } from "./providers/unsupported-example";
 import type {
@@ -15,6 +16,7 @@ export function providerConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Pro
   return {
     anilistEnabled: env.ANILIST_ENABLED !== "false",
     openMediaEnabled: env.OPEN_MEDIA_ENABLED !== "false",
+    anikotoEnabled: env.ANIKOTO_ENABLED !== "false",
     anilistRateLimitPerMinute: Number(env.ANILIST_RATE_LIMIT_PER_MINUTE ?? 80),
     ingestMaxEpisodes: Number(env.INGEST_MAX_EPISODES ?? 60),
     requestTimeoutMs: Number(env.INGEST_REQUEST_TIMEOUT_MS ?? 15_000),
@@ -46,6 +48,13 @@ export function createProviderRegistry(
     subtitles.set(openMedia.key, openMedia);
   }
   statuses.push(openMedia);
+
+  const anikoto = new AniKotoProvider(ctx);
+  if (config.anikotoEnabled !== false) {
+    metadata.set(anikoto.key, anikoto);
+    video.set(anikoto.key, anikoto);
+  }
+  statuses.push(anikoto);
 
   const anilist = new AniListProvider(ctx, {
     maxEpisodes: config.ingestMaxEpisodes,
