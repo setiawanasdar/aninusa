@@ -42,7 +42,33 @@ export function mapEpisode(row: any): EpisodeDto {
   };
 }
 
-const ANIKOTO_URL = process.env.ANIKOTO_API_URL ?? "https://anikototvapi.vercel.app/api";
+const rawEndpoint = process.env.ANIKOTO_API_URL ?? "https://anikototvapi.vercel.app/api";
+const ANIKOTO_URL = rawEndpoint.endsWith("/api")
+  ? rawEndpoint
+  : `${rawEndpoint.replace(/\/+$/, "")}/api`;
+
+function extractList(res: any): any[] {
+  if (!res) return [];
+  if (Array.isArray(res.results?.data)) return res.results.data;
+  if (Array.isArray(res.results)) return res.results;
+  if (Array.isArray(res.data)) return res.data;
+  return [];
+}
+
+function extractTotal(res: any, fallbackCount: number): number {
+  if (!res) return fallbackCount;
+  const total =
+    res.pagination?.totalItems ||
+    res.results?.pagination?.totalItems ||
+    res.results?.totalItems;
+  if (typeof total === "number" && total > 0) return total;
+  const totalPages =
+    res.pagination?.totalPages ||
+    res.results?.pagination?.totalPages ||
+    res.results?.totalPages;
+  if (typeof totalPages === "number" && totalPages > 0) return totalPages * 30;
+  return fallbackCount;
+}
 
 interface StoredEpisodeMeta {
   animeSlug: string;
@@ -183,14 +209,49 @@ export async function getHomeSections(): Promise<HomeSections> {
   if (hit) return hit;
 
   const { year, season } = currentSeason();
-  const homeRes = await fetchAniKoto<any>("");
+
+  const [homeRes, popularRes, latestRes, newReleaseRes, completedRes] = await Promise.all([
+    fetchAniKoto<any>(""),
+    fetchAniKoto<any>("/most-popular?page=1"),
+    fetchAniKoto<any>("/latest-updated?page=1"),
+    fetchAniKoto<any>("/new-release?page=1"),
+    fetchAniKoto<any>("/filter?status=finished-airing&page=1"),
+  ]);
 
   const trendingRaw = Array.isArray(homeRes?.results?.trending) ? homeRes.results.trending : [];
-  const topAiringRaw = Array.isArray(homeRes?.results?.topAiring) ? homeRes.results.topAiring : [];
-  const genresRaw = Array.isArray(homeRes?.results?.genres) ? homeRes.results.genres : [];
+  const popularRaw = extractList(popularRes);
+  const latestRaw = extractList(latestRes);
+  const newReleaseRaw = extractList(newReleaseRes);
+  const completedRaw = extractList(completedRes);
 
-  const trending = trendingRaw.map(mapAniKotoItemToSummary);
-  const popular = topAiringRaw.length > 0 ? topAiringRaw.map(mapAniKotoItemToSummary) : trending;
+  const trending =
+    trendingRaw.length > 0
+      ? trendingRaw.map(mapAniKotoItemToSummary)
+      : popularRaw.slice(0, 14).map(mapAniKotoItemToSummary);
+
+  const popular =
+    popularRaw.length > 0
+      ? popularRaw.map(mapAniKotoItemToSummary)
+      : (Array.isArray(homeRes?.results?.topAiring) ? homeRes.results.topAiring : trendingRaw).map(
+          mapAniKotoItemToSummary,
+        );
+
+  const recentlyAdded =
+    newReleaseRaw.length > 0
+      ? newReleaseRaw.map(mapAniKotoItemToSummary)
+      : trending.slice(0, 14);
+
+  const completed =
+    completedRaw.length > 0
+      ? completedRaw.map(mapAniKotoItemToSummary)
+      : trending.slice(0, 14);
+
+  const topRated =
+    Array.isArray(homeRes?.results?.topAiring) && homeRes.results.topAiring.length > 0
+      ? homeRes.results.topAiring.map(mapAniKotoItemToSummary)
+      : popular.slice(0, 14);
+
+  const seasonal = popular.slice(0, 14);
 
   // Enhance top candidates with full info (banner & synopsis) for the hero carousel
   const heroCandidates = [...trending, ...popular].slice(0, 5);
@@ -204,6 +265,7 @@ export async function getHomeSections(): Promise<HomeSections> {
             banner: info.banner || candidate.banner,
             score: info.score ?? candidate.score,
             genres: info.genres.length ? info.genres : candidate.genres,
+            synopsis: info.synopsis || null,
           };
         }
       } catch {
@@ -213,58 +275,50 @@ export async function getHomeSections(): Promise<HomeSections> {
     }),
   );
 
-  const latestEpisodes = trendingRaw
-    .filter((item: any) => item.sub && typeof item.sub === "number")
-    .map((item: any) => {
-      const slug = cleanSlug(item.slug);
-      const subNum = item.sub;
-      return {
-        episode: {
-          id: `${slug}:${subNum}`,
-          animeId: slug,
-          number: subNum,
-          title: `Episode ${subNum}`,
-          description: null,
-          duration: 24,
-          thumbnail: item.poster || null,
-          airDate: null,
-          introStart: null,
-          introEnd: null,
-          outroStart: null,
-        },
-        anime: {
-          id: slug,
-          slug,
-          title: item.title,
-          poster: item.poster || null,
-          score: parseScore(item.rating),
-          year: parseYear(item.premiered, item.aired),
-          status: "ONGOING" as AnimeStatus,
-        },
-      };
-    });
+  const latestEpisodeSource = latestRaw.length > 0 ? latestRaw : trendingRaw;
+  const latestEpisodes = latestEpisodeSource.slice(0, 14).map((item: any) => {
+    const slug = cleanSlug(item.slug || "");
+    const subNum =
+      typeof item.sub === "number" && item.sub > 0
+        ? item.sub
+        : parseInt(String(item.sub || item.episode || "1"), 10) || 1;
+    return {
+      episode: {
+        id: `${slug}:${subNum}`,
+        animeId: slug,
+        number: subNum,
+        title: `Episode ${subNum}`,
+        description: null,
+        duration: 24,
+        thumbnail: item.poster || null,
+        airDate: null,
+        introStart: null,
+        introEnd: null,
+        outroStart: null,
+      },
+      anime: {
+        id: slug,
+        slug,
+        title: item.title || "Anime",
+        poster: item.poster || null,
+        score: parseScore(item.rating),
+        year: parseYear(item.premiered, item.aired),
+        status: "ONGOING" as AnimeStatus,
+      },
+    };
+  });
 
-  const defaultGenres = [
-    "Action", "Adventure", "Comedy", "Drama", "Fantasy",
-    "Horror", "Mystery", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural"
-  ];
-  const genresList = genresRaw.length > 0 ? genresRaw : defaultGenres;
-  const genres: GenreDto[] = genresList.map((name: string) => ({
-    id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-    name,
-    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-    animeCount: 20,
-  }));
+  const genres = await listGenres();
 
   const sections: HomeSections = {
     hero: hero.length > 0 ? hero : popular.slice(0, 5),
     trending,
     latestEpisodes,
-    recentlyAdded: trending.slice(0, 14),
+    recentlyAdded,
     popular,
-    seasonal: popular.slice(0, 14),
-    completed: trending.slice(0, 14),
-    topRated: popular.slice(0, 14),
+    seasonal,
+    completed,
+    topRated,
     genres,
     seasonLabel: { year, season },
   };
@@ -284,41 +338,63 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
     let items: AnimeSummary[] = [];
     let total = 0;
 
-    const searchTerm = query.q?.trim() || query.genre || "";
-
-    if (searchTerm) {
-      const searchRes = await fetchAniKoto<any>(
-        `/search?keyword=${encodeURIComponent(searchTerm)}&page=${page}`,
+    if (query.q && query.q.trim()) {
+      const res = await fetchAniKoto<any>(
+        `/search?keyword=${encodeURIComponent(query.q.trim())}&page=${page}`,
       );
-      const rawList = Array.isArray(searchRes?.results?.data)
-        ? searchRes.results.data
-        : Array.isArray(searchRes?.results)
-          ? searchRes.results
-          : [];
+      items = extractList(res).map(mapAniKotoItemToSummary);
+      total = extractTotal(res, items.length);
+    } else if (query.genre || query.year || query.status || query.type) {
+      if (query.genre && !query.year && !query.status && !query.type) {
+        const genreSlug = query.genre.trim().toLowerCase();
+        const res = await fetchAniKoto<any>(
+          `/genre/${encodeURIComponent(genreSlug)}?page=${page}`,
+        );
+        items = extractList(res).map(mapAniKotoItemToSummary);
+        total = extractTotal(res, items.length);
+      } else {
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        if (query.genre) params.set("genre", query.genre.trim().toLowerCase());
+        if (query.year) params.set("year", String(query.year));
+        if (query.status === "COMPLETED") params.set("status", "finished-airing");
+        else if (query.status === "ONGOING") params.set("status", "currently-airing");
+        else if (query.status === "UPCOMING") params.set("status", "not-yet-aired");
 
-      items = rawList.map(mapAniKotoItemToSummary);
-      total = searchRes?.pagination?.totalItems || searchRes?.results?.pagination?.totalItems || items.length;
-    } else {
-      const homeRes = await fetchAniKoto<any>("");
-      const combined = [
-        ...(Array.isArray(homeRes?.results?.trending) ? homeRes.results.trending : []),
-        ...(Array.isArray(homeRes?.results?.topAiring) ? homeRes.results.topAiring : []),
-      ];
-
-      const seen = new Set<string>();
-      const uniqueItems: any[] = [];
-      for (const item of combined) {
-        const slug = cleanSlug(item.slug);
-        if (!seen.has(slug)) {
-          seen.add(slug);
-          uniqueItems.push(item);
+        if (query.type) {
+          const typeLower = query.type.toLowerCase();
+          if (["tv", "movie", "ova", "ona", "special", "music"].includes(typeLower)) {
+            params.set("type", typeLower);
+          }
         }
-      }
 
-      const allSummaries = uniqueItems.map(mapAniKotoItemToSummary);
-      total = allSummaries.length;
-      const skip = pageToSkip(page, perPage);
-      items = allSummaries.slice(skip, skip + perPage);
+        const res = await fetchAniKoto<any>(`/filter?${params.toString()}`);
+        items = extractList(res).map(mapAniKotoItemToSummary);
+        total = extractTotal(res, items.length);
+      }
+    } else if (query.sort === "newest" || query.sort === "updated") {
+      const res = await fetchAniKoto<any>(
+        `/latest-updated?page=${page}`,
+      );
+      items = extractList(res).map(mapAniKotoItemToSummary);
+      total = extractTotal(res, items.length);
+    } else {
+      const res = await fetchAniKoto<any>(
+        `/most-popular?page=${page}`,
+      );
+      const list = extractList(res);
+      if (list.length > 0) {
+        items = list.map(mapAniKotoItemToSummary);
+        total = extractTotal(res, items.length);
+      } else {
+        const homeRes = await fetchAniKoto<any>("");
+        const combined = [
+          ...(Array.isArray(homeRes?.results?.trending) ? homeRes.results.trending : []),
+          ...(Array.isArray(homeRes?.results?.topAiring) ? homeRes.results.topAiring : []),
+        ];
+        items = combined.map(mapAniKotoItemToSummary);
+        total = items.length;
+      }
     }
 
     const result = buildPagination(items, page, perPage, Math.max(total, items.length));
@@ -613,16 +689,45 @@ export async function getEpisodePlayback(
 }
 
 export async function listGenres(): Promise<GenreDto[]> {
-  const homeRes = await fetchAniKoto<any>("");
-  const genres = homeRes?.results?.genres || [
-    "Action", "Adventure", "Comedy", "Drama", "Fantasy",
-    "Horror", "Mystery", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural"
+  const GENRE_LIST = [
+    { name: "Action", slug: "action" },
+    { name: "Adventure", slug: "adventure" },
+    { name: "Comedy", slug: "comedy" },
+    { name: "Drama", slug: "drama" },
+    { name: "Fantasy", slug: "fantasy" },
+    { name: "Romance", slug: "romance" },
+    { name: "Sci-Fi", slug: "sci-fi" },
+    { name: "Slice of Life", slug: "slice-of-life" },
+    { name: "Supernatural", slug: "supernatural" },
+    { name: "Mystery", slug: "mystery" },
+    { name: "Horror", slug: "horror" },
+    { name: "Isekai", slug: "isekai" },
+    { name: "Mecha", slug: "mecha" },
+    { name: "Sports", slug: "sports" },
+    { name: "Shounen", slug: "shounen" },
+    { name: "Seinen", slug: "seinen" },
+    { name: "Psychological", slug: "psychological" },
+    { name: "Thriller", slug: "thriller" },
+    { name: "Martial Arts", slug: "martial-arts" },
+    { name: "School", slug: "school" },
+    { name: "Magic", slug: "magic" },
+    { name: "Super Power", slug: "super-power" },
+    { name: "Historical", slug: "historical" },
+    { name: "Military", slug: "military" },
+    { name: "Demons", slug: "demons" },
+    { name: "Vampire", slug: "vampire" },
+    { name: "Music", slug: "music" },
+    { name: "Parody", slug: "parody" },
+    { name: "Game", slug: "game" },
+    { name: "Harem", slug: "harem" },
+    { name: "Ecchi", slug: "ecchi" },
   ];
-  return genres.map((name: string) => ({
-    id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-    name,
-    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-    animeCount: 20,
+
+  return GENRE_LIST.map((g) => ({
+    id: g.slug,
+    name: g.name,
+    slug: g.slug,
+    animeCount: 30,
   }));
 }
 
@@ -639,7 +744,8 @@ export async function listStudios(): Promise<Array<{ id: string; name: string; s
 }
 
 export async function listSeasonYears(): Promise<number[]> {
-  return [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 8 }, (_, i) => currentYear - i);
 }
 
 export async function getAnimeAvailability(animeId: string): Promise<AnimeAvailability> {
