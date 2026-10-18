@@ -64,7 +64,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
   if (!episode) notFound();
 
   const [playback, episodes, related, user] = await Promise.all([
-    getEpisodePlayback(episode.id),
+    getEpisodePlayback(episode.id, { animeSlug: anime.slug, episodeNumber: number }),
     getAnimeEpisodes(anime.id),
     getRelatedAnime(anime, 6),
     getSessionUser(),
@@ -75,10 +75,12 @@ export default async function WatchPage({ params }: WatchPageProps) {
   const [favoriteIds, history] = user
     ? await Promise.all([
         getFavoriteIds(user.id),
-        prisma.watchHistory.findUnique({
-          where: { userId_episodeId: { userId: user.id, episodeId: episode.id } },
-          select: { progress: true, completed: true },
-        }),
+        prisma.watchHistory
+          .findUnique({
+            where: { userId_episodeId: { userId: user.id, episodeId: episode.id } },
+            select: { progress: true, completed: true },
+          })
+          .catch(() => null),
       ])
     : [[], null];
 

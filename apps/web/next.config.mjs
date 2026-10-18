@@ -43,6 +43,7 @@ const nextConfig = {
       "media-src 'self' blob: https:",
       "font-src 'self' data:",
       "connect-src 'self' https:",
+      "frame-src 'self' https:",
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",

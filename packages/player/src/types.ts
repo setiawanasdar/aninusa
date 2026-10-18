@@ -1,4 +1,4 @@
-export type PlayerSourceFormat = "HLS" | "DASH" | "MP4" | "WEBM";
+export type PlayerSourceFormat = "HLS" | "DASH" | "MP4" | "WEBM" | "EMBED";
 
 export interface PlayerSource {
   id: string;

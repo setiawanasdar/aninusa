@@ -152,6 +152,10 @@ export function VideoPlayer({
   );
 
   const activeSource: PlayerSource | undefined = orderedSources[sourceIndex];
+  const isEmbed = Boolean(
+    activeSource &&
+      (activeSource.format === "EMBED" || /megaplay\.buzz|\/stream\//i.test(activeSource.url)),
+  );
   const activeSubtitle = subtitles.find((track) => track.id === subtitleId) ?? null;
 
   const visibleCues = useMemo(
@@ -239,6 +243,13 @@ export function VideoPlayer({
     setLoading(true);
     setError(null);
     setHlsQualities([]);
+
+    const isEmbed = activeSource.format === "EMBED" || /megaplay\.buzz|\/stream\//i.test(activeSource.url);
+    if (isEmbed) {
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
     const isHls = activeSource.format === "HLS" || /\.m3u8(\?|$)/i.test(activeSource.url);
     const isDash = activeSource.format === "DASH" || /\.mpd(\?|$)/i.test(activeSource.url);
@@ -704,228 +715,246 @@ export function VideoPlayer({
       `}</style>
 
       <div className="relative aspect-video w-full">
-        <video
-          ref={videoRef}
-          className="h-full w-full bg-black object-contain"
-          poster={poster ?? undefined}
-          playsInline
-          preload="metadata"
-          crossOrigin="anonymous"
-          aria-label={`Pemutar video ${animeTitle} episode ${episodeNumber}`}
-          onClick={togglePlay}
-          onPlay={() => {
-            setPlaying(true);
-            setEnded(false);
-            showControlsTemporarily();
-          }}
-          onPause={() => {
-            setPlaying(false);
-            setControlsVisible(true);
-            reportProgress(true);
-          }}
-          onWaiting={() => setLoading(true)}
-          onPlaying={() => setLoading(false)}
-          onCanPlay={() => setLoading(false)}
-          onLoadedMetadata={(event) => {
-            setDuration(event.currentTarget.duration || 0);
-            setLoading(false);
-          }}
-          onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
-          onTimeUpdate={(event) => {
-            const video = event.currentTarget;
-            setCurrentTime(video.currentTime);
-            if (video.buffered.length) {
-              setBuffered(video.buffered.end(video.buffered.length - 1));
-            }
-            if (intro && !introSkipped.current) {
-              setShowIntroButton(video.currentTime >= intro.start && video.currentTime < intro.end - 1);
-            }
-            if (outroStart) {
-              setShowOutroButton(video.currentTime >= outroStart);
-            }
-            reportProgress();
-          }}
-          onVolumeChange={(event) => {
-            setVolume(event.currentTarget.volume);
-            setMuted(event.currentTarget.muted);
-          }}
-          onRateChange={(event) => setPlaybackRate(event.currentTarget.playbackRate)}
-          onEnded={() => {
-            setPlaying(false);
-            setEnded(true);
-            setControlsVisible(true);
-            reportProgress(true);
-            onEnded?.();
-            if (autoNext && nextEpisode) onNextEpisode?.();
-          }}
-          onError={() => {
-            if (hlsRef.current) return;
-            setError("Sumber video tidak tersedia.");
-            setLoading(false);
-          }}
-        >
-          {/* Subtitle cues are fetched and rendered as a custom overlay so the
-              user can control size, position and opacity. Native <track>
-              elements are intentionally omitted to avoid double rendering. */}
-        </video>
-
-        {loading && !error && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-            <Loader2 className="h-10 w-10 animate-spin text-white/80" aria-hidden="true" />
-            <span className="sr-only">Memuat video</span>
-          </div>
-        )}
-
-        {error && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/85 px-6 text-center">
-            <TriangleAlert className="h-10 w-10 text-amber-400" aria-hidden="true" />
-            <div className="space-y-1">
-              <p className="text-base font-semibold text-white">Sumber video tidak tersedia.</p>
-              <p className="text-sm text-white/55">
-                Coba sumber lain. Detail teknis hanya dicatat di server.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={retry}
-                className="rounded-md bg-[#ff3b5c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e63350] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                Coba sumber lain
-              </button>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="rounded-md border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                Muat ulang
-              </button>
-            </div>
-          </div>
-        )}
-
-        {visibleCues.length > 0 && !error && (
-          <div
-            className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4"
-            style={{ bottom: `${subtitleStyle.bottom}%` }}
-            aria-live="off"
-          >
-            <div
-              className="max-w-[92%] whitespace-pre-line rounded px-2 py-1 text-center font-medium leading-snug text-white"
-              style={{
-                fontSize: `${subtitleStyle.fontSize}px`,
-                backgroundColor: `rgba(0,0,0,${subtitleStyle.backgroundOpacity})`,
-                opacity: subtitleStyle.textOpacity,
-                textShadow: "0 1px 2px rgba(0,0,0,.85)",
-              }}
-            >
-              {visibleCues.map((cue) => cue.text).join("\n")}
-            </div>
-          </div>
-        )}
-
-        {showIntroButton && intro && (
-          <button
-            type="button"
-            onClick={skipIntro}
-            className="absolute bottom-24 right-4 z-20 rounded-md border border-white/25 bg-black/70 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
-          >
-            Lewati intro
-          </button>
-        )}
-
-        {showOutroButton && (nextEpisode || outroStart) && !ended && (
-          <button
-            type="button"
-            onClick={skipOutro}
-            className="absolute bottom-24 right-4 z-20 rounded-md border border-white/25 bg-black/70 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
-          >
-            {autoNext && nextEpisode ? "Episode berikutnya" : "Lewati outro"}
-          </button>
-        )}
-
-        {ended && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/85 px-6 text-center">
-            <p className="text-sm text-white/60">Episode {episodeNumber} selesai</p>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const video = videoRef.current;
-                  if (!video) return;
-                  video.currentTime = 0;
-                  void video.play().catch(() => undefined);
-                }}
-                className="flex items-center gap-2 rounded-md border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
-              >
-                <RotateCcw className="h-4 w-4" aria-hidden="true" /> Putar ulang
-              </button>
-              {nextEpisode && (
-                <button
-                  type="button"
-                  onClick={goNext}
-                  className="flex items-center gap-2 rounded-md bg-[#ff3b5c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e63350] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                >
-                  Episode {nextEpisode.number}
-                  <SkipForward className="h-4 w-4" aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {!playing && !loading && !error && !ended && (
-          <button
-            type="button"
+        {isEmbed && activeSource ? (
+          <iframe
+            src={activeSource.url}
+            title={`Pemutar video ${animeTitle} episode ${episodeNumber}`}
+            className="h-full w-full bg-black border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            className="h-full w-full bg-black object-contain"
+            poster={poster ?? undefined}
+            playsInline
+            preload="metadata"
+            crossOrigin="anonymous"
+            aria-label={`Pemutar video ${animeTitle} episode ${episodeNumber}`}
             onClick={togglePlay}
-            className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 transition-colors hover:bg-black/35 focus-visible:outline-none"
-            aria-label="Putar video"
+            onPlay={() => {
+              setPlaying(true);
+              setEnded(false);
+              showControlsTemporarily();
+            }}
+            onPause={() => {
+              setPlaying(false);
+              setControlsVisible(true);
+              reportProgress(true);
+            }}
+            onWaiting={() => setLoading(true)}
+            onPlaying={() => setLoading(false)}
+            onCanPlay={() => setLoading(false)}
+            onLoadedMetadata={(event) => {
+              setDuration(event.currentTarget.duration || 0);
+              setLoading(false);
+            }}
+            onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
+            onTimeUpdate={(event) => {
+              const video = event.currentTarget;
+              setCurrentTime(video.currentTime);
+              if (video.buffered.length) {
+                setBuffered(video.buffered.end(video.buffered.length - 1));
+              }
+              if (intro && !introSkipped.current) {
+                setShowIntroButton(video.currentTime >= intro.start && video.currentTime < intro.end - 1);
+              }
+              if (outroStart) {
+                setShowOutroButton(video.currentTime >= outroStart);
+              }
+              reportProgress();
+            }}
+            onVolumeChange={(event) => {
+              setVolume(event.currentTarget.volume);
+              setMuted(event.currentTarget.muted);
+            }}
+            onRateChange={(event) => setPlaybackRate(event.currentTarget.playbackRate)}
+            onEnded={() => {
+              setPlaying(false);
+              setEnded(true);
+              setControlsVisible(true);
+              reportProgress(true);
+              onEnded?.();
+              if (autoNext && nextEpisode) onNextEpisode?.();
+            }}
+            onError={() => {
+              if (hlsRef.current) return;
+              setError("Sumber video tidak tersedia.");
+              setLoading(false);
+            }}
           >
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ff3b5c]/95 shadow-xl">
-              <Play className="ml-1 h-7 w-7 fill-white text-white" aria-hidden="true" />
-            </span>
-          </button>
+            {/* Subtitle cues are fetched and rendered as a custom overlay so the
+                user can control size, position and opacity. Native <track>
+                elements are intentionally omitted to avoid double rendering. */}
+          </video>
         )}
-      </div>
 
-      <div
-        className={`absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/85 via-black/40 to-transparent px-4 pb-10 pt-3 transition-opacity duration-200 ${
-          controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            {onBack && (
+        {!isEmbed && (
+          <>
+            {loading && !error && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                <Loader2 className="h-10 w-10 animate-spin text-white/80" aria-hidden="true" />
+                <span className="sr-only">Memuat video</span>
+              </div>
+            )}
+
+            {error && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/85 px-6 text-center">
+                <TriangleAlert className="h-10 w-10 text-amber-400" aria-hidden="true" />
+                <div className="space-y-1">
+                  <p className="text-base font-semibold text-white">Sumber video tidak tersedia.</p>
+                  <p className="text-sm text-white/55">
+                    Coba sumber lain. Detail teknis hanya dicatat di server.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className="rounded-md bg-[#ff3b5c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e63350] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  >
+                    Coba sumber lain
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="rounded-md border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  >
+                    Muat ulang
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {visibleCues.length > 0 && !error && (
+              <div
+                className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4"
+                style={{ bottom: `${subtitleStyle.bottom}%` }}
+                aria-live="off"
+              >
+                <div
+                  className="max-w-[92%] whitespace-pre-line rounded px-2 py-1 text-center font-medium leading-snug text-white"
+                  style={{
+                    fontSize: `${subtitleStyle.fontSize}px`,
+                    backgroundColor: `rgba(0,0,0,${subtitleStyle.backgroundOpacity})`,
+                    opacity: subtitleStyle.textOpacity,
+                    textShadow: "0 1px 2px rgba(0,0,0,.85)",
+                  }}
+                >
+                  {visibleCues.map((cue) => cue.text).join("\n")}
+                </div>
+              </div>
+            )}
+
+            {showIntroButton && intro && (
               <button
                 type="button"
-                onClick={onBack}
-                className="mb-1 flex items-center gap-1 text-xs font-medium text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
+                onClick={skipIntro}
+                className="absolute bottom-24 right-4 z-20 rounded-md border border-white/25 bg-black/70 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
               >
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Kembali
+                Lewati intro
               </button>
             )}
-            <p className="truncate text-sm font-semibold text-white sm:text-base">{animeTitle}</p>
-            <p className="truncate text-xs text-white/60">
-              Episode {episodeNumber}
-              {episodeTitle ? ` · ${episodeTitle}` : ""}
-            </p>
-          </div>
-          {animeHref && (
-            <a
-              href={animeHref}
-              className="hidden shrink-0 rounded-md border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c] sm:block"
-            >
-              Detail anime
-            </a>
-          )}
-        </div>
+
+            {showOutroButton && (nextEpisode || outroStart) && !ended && (
+              <button
+                type="button"
+                onClick={skipOutro}
+                className="absolute bottom-24 right-4 z-20 rounded-md border border-white/25 bg-black/70 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
+              >
+                {autoNext && nextEpisode ? "Episode berikutnya" : "Lewati outro"}
+              </button>
+            )}
+
+            {ended && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/85 px-6 text-center">
+                <p className="text-sm text-white/60">Episode {episodeNumber} selesai</p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const video = videoRef.current;
+                      if (!video) return;
+                      video.currentTime = 0;
+                      void video.play().catch(() => undefined);
+                    }}
+                    className="flex items-center gap-2 rounded-md border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
+                  >
+                    <RotateCcw className="h-4 w-4" aria-hidden="true" /> Putar ulang
+                  </button>
+                  {nextEpisode && (
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      className="flex items-center gap-2 rounded-md bg-[#ff3b5c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e63350] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    >
+                      Episode {nextEpisode.number}
+                      <SkipForward className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!playing && !loading && !error && !ended && (
+              <button
+                type="button"
+                onClick={togglePlay}
+                className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 transition-colors hover:bg-black/35 focus-visible:outline-none"
+                aria-label="Putar video"
+              >
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ff3b5c]/95 shadow-xl">
+                  <Play className="ml-1 h-7 w-7 fill-white text-white" aria-hidden="true" />
+                </span>
+              </button>
+            )}
+          </>
+        )}
       </div>
 
-      <div
-        className={`absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-10 transition-opacity duration-200 sm:px-3 ${
-          controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      >
+      {!isEmbed && (
+        <div
+          className={`absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/85 via-black/40 to-transparent px-4 pb-10 pt-3 transition-opacity duration-200 ${
+            controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              {onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="mb-1 flex items-center gap-1 text-xs font-medium text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Kembali
+                </button>
+              )}
+              <p className="truncate text-sm font-semibold text-white sm:text-base">{animeTitle}</p>
+              <p className="truncate text-xs text-white/60">
+                Episode {episodeNumber}
+                {episodeTitle ? ` · ${episodeTitle}` : ""}
+              </p>
+            </div>
+            {animeHref && (
+              <a
+                href={animeHref}
+                className="hidden shrink-0 rounded-md border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c] sm:block"
+              >
+                Detail anime
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!isEmbed && (
+        <>
+          <div
+            className={`absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-10 transition-opacity duration-200 sm:px-3 ${
+              controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
+          >
         <div
           className="group/seek relative mx-1 mb-1 flex h-4 cursor-pointer items-center"
           role="slider"
@@ -1164,6 +1193,8 @@ export function VideoPlayer({
         onAutoNextChange={setAutoNext}
         subtitleError={subtitleError}
       />
+    </>
+  )}
 
       <p className="sr-only" aria-live="polite" id={`${playerId}-status`}>
         {playing ? "Memutar" : "Dijeda"} pada {formatPlayerTime(currentTime)} dari{" "}

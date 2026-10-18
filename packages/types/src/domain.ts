@@ -76,7 +76,7 @@ export interface EpisodeDto {
 export interface PlaybackSource {
   id: string;
   quality: number;
-  format: VideoFormat;
+  format: VideoFormat | "EMBED";
   codec: string | null;
   language: string;
   url: string;
