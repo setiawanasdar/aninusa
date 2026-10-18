@@ -56,11 +56,11 @@ export const CACHE_KEYS = {
 } as const;
 
 export const CACHE_TTL = {
-  home: 60,
-  catalog: 60,
-  anime: 120,
-  playback: 30,
-  taxonomy: 600,
+  home: 300,
+  catalog: 300,
+  anime: 1_800,
+  playback: 1_800,
+  taxonomy: 3_600,
   sitemap: 3_600,
 } as const;
 
@@ -68,5 +68,6 @@ export async function invalidateCatalogCache(): Promise<void> {
   await Promise.all([
     cache().deletePrefix("catalog:"),
     cache().deletePrefix("search:"),
+    cache().deletePrefix("animasu:"),
   ]);
 }

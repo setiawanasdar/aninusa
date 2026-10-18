@@ -65,12 +65,13 @@ export interface AnimasuWatchResult {
   };
 }
 
-export async function fetchAnimasu<T>(path: string, options?: { revalidate?: number }): Promise<T | null> {
+export async function fetchAnimasu<T>(path: string, options?: { revalidate?: number; timeoutMs?: number }): Promise<T | null> {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${ANIMASU_URL}${cleanPath}`;
   try {
     const res = await fetch(url, {
-      next: { revalidate: options?.revalidate ?? 60 },
+      next: { revalidate: options?.revalidate ?? 300 },
+      signal: AbortSignal.timeout(options?.timeoutMs ?? 6000),
       headers: {
         Accept: "application/json",
         "User-Agent": "AniNusa/1.0",
@@ -327,10 +328,11 @@ export async function getAnimasuPlaybackSources(params: {
   const hit = await cache().get<PlaybackSource[]>(cacheKey);
   if (hit) return hit;
 
-  let matchedAnimeSlug: string | null = null;
+  const matchCacheKey = `animasu:match:${animeSlug || ""}:${animeTitle || ""}`;
+  let matchedAnimeSlug: string | null = await cache().get<string>(matchCacheKey);
 
-  // 1. If slug itself matches an Animasu anime
-  if (animeSlug) {
+  // 1. If not yet matched, try direct slug
+  if (!matchedAnimeSlug && animeSlug) {
     const clean = animeSlug.replace(/^animasu:/i, "").trim();
     try {
       const directDetail = await fetchAnimasu<{ success: boolean; results: AnimasuAnimeDetailData }>(
@@ -349,9 +351,6 @@ export async function getAnimasuPlaybackSources(params: {
     const searchQueries: string[] = [];
     if (animeTitle) {
       searchQueries.push(animeTitle);
-      if (altTitles?.length) {
-        searchQueries.push(...altTitles);
-      }
       // Without Season prefix/suffix
       const withoutSeason = animeTitle
         .replace(/\s*-\s*Starting Life in Another World.*/i, "")
@@ -362,6 +361,9 @@ export async function getAnimasuPlaybackSources(params: {
         .trim();
       if (withoutSeason && withoutSeason !== animeTitle) {
         searchQueries.push(withoutSeason);
+      }
+      if (altTitles?.length) {
+        searchQueries.push(...altTitles.slice(0, 2));
       }
     }
     if (animeSlug) {
@@ -400,11 +402,23 @@ export async function getAnimasuPlaybackSources(params: {
 
   if (!matchedAnimeSlug) return [];
 
-  // Fetch anime detail from Animasu to find the episode list
-  const detail = await fetchAnimasu<{ success: boolean; results: AnimasuAnimeDetailData }>(
-    `/anime/${encodeURIComponent(matchedAnimeSlug)}`,
-  );
-  const epList = detail?.results?.episodeList || [];
+  // Cache the matched slug so all subsequent episode clicks resolve in 0ms!
+  await cache().set(matchCacheKey, matchedAnimeSlug, CACHE_TTL.anime);
+
+  // Fetch or read cached episode list for this anime
+  const epListCacheKey = `animasu:eplist:${matchedAnimeSlug}`;
+  let epList = await cache().get<AnimasuAnimeDetailData["episodeList"]>(epListCacheKey);
+
+  if (!epList || !epList.length) {
+    const detail = await fetchAnimasu<{ success: boolean; results: AnimasuAnimeDetailData }>(
+      `/anime/${encodeURIComponent(matchedAnimeSlug)}`,
+    );
+    epList = detail?.results?.episodeList || [];
+    if (epList.length > 0) {
+      await cache().set(epListCacheKey, epList, CACHE_TTL.anime);
+    }
+  }
+
   if (!epList.length) return [];
 
   // Find matching episode

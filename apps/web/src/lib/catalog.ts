@@ -161,11 +161,15 @@ function currentSeason(): { year: number; season: Season } {
   return { year: now.getUTCFullYear(), season };
 }
 
-async function fetchAniKoto<T>(path: string): Promise<T | null> {
+async function fetchAniKoto<T>(
+  path: string,
+  options?: { revalidate?: number; timeoutMs?: number },
+): Promise<T | null> {
   const url = `${ANIKOTO_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   try {
     const res = await fetch(url, {
-      next: { revalidate: 60 },
+      next: { revalidate: options?.revalidate ?? 300 },
+      signal: AbortSignal.timeout(options?.timeoutMs ?? 6000),
       headers: {
         Accept: "application/json",
         "User-Agent": "AniNusa/1.0",
@@ -662,7 +666,7 @@ export async function getAnimeEpisodes(animeIdOrSlug: string): Promise<EpisodeDt
     }
   }
 
-  await cache().set(cacheKey, episodes, CACHE_TTL.playback);
+  await cache().set(cacheKey, episodes, CACHE_TTL.anime);
   return episodes;
 }
 
@@ -746,84 +750,120 @@ export async function getEpisodePlayback(
   let introEnd: number | null = null;
   let outroStart: number | null = null;
 
-  if (serverIds) {
+  // Parallel resolution for AniKoto stream servers
+  const resolveAniKoto = async () => {
+    if (!serverIds) return null;
     try {
       const serverRes = await fetchAniKoto<any>(`/servers?ids=${encodeURIComponent(serverIds)}`);
       const servers = Array.isArray(serverRes?.results) ? serverRes.results : [];
 
-      for (const srv of servers.slice(0, 3)) {
+      const streamTasks = servers.slice(0, 3).map(async (srv: any) => {
         try {
           const streamRes = await fetchAniKoto<any>(`/stream?id=${encodeURIComponent(srv.link_id)}`);
-          if (streamRes?.success && streamRes?.results?.url) {
-            const streamUrl = streamRes.results.url;
-            sources.push({
-              id: srv.link_id,
-              quality: 1080,
-              format: "EMBED",
-              codec: null,
-              language: srv.type === "dub" ? "en" : "ja",
-              url: streamUrl,
-              label: srv.name ? `${srv.name} (Sub Eng)` : "Server HD (Sub Eng)",
-              status: "ACTIVE",
-            });
+          return { srv, streamRes };
+        } catch {
+          return null;
+        }
+      });
 
-            if (streamRes.results.skipData?.intro?.length === 2) {
-              introStart = streamRes.results.skipData.intro[0];
-              introEnd = streamRes.results.skipData.intro[1];
-            }
-            if (streamRes.results.skipData?.outro?.length === 2) {
-              outroStart = streamRes.results.skipData.outro[0];
-            }
+      const results = await Promise.all(streamTasks);
+      const aniSources: PlaybackSource[] = [];
+      const aniSubs: SubtitleTrack[] = [];
+      let aniIntroStart: number | null = null;
+      let aniIntroEnd: number | null = null;
+      let aniOutroStart: number | null = null;
 
-            // Extract subtitle tracks from stream response
-            const tracks =
-              streamRes.results.tracks ||
-              streamRes.results.subtitles ||
-              (Array.isArray(streamRes.tracks) ? streamRes.tracks : []);
+      for (const res of results) {
+        if (!res || !res.streamRes?.success || !res.streamRes?.results?.url) continue;
+        const { srv, streamRes } = res;
+        const streamUrl = streamRes.results.url;
+        aniSources.push({
+          id: srv.link_id,
+          quality: 1080,
+          format: "EMBED",
+          codec: null,
+          language: srv.type === "dub" ? "en" : "ja",
+          url: streamUrl,
+          label: srv.name ? `${srv.name} (Sub Eng)` : "Server HD (Sub Eng)",
+          status: "ACTIVE",
+        });
 
-            if (Array.isArray(tracks)) {
-              for (const trk of tracks) {
-                const trkUrl = trk.file || trk.url;
-                if (!trkUrl || trk.kind === "thumbnails") continue;
-                const lang = (trk.language || trk.lang || "en").toLowerCase();
-                const label = trk.label || (lang.startsWith("en") ? "English" : lang);
-                if (!rawSubtitles.some((s) => s.url === trkUrl)) {
-                  rawSubtitles.push({
-                    id: `sub-${srv.link_id}-${rawSubtitles.length}`,
-                    language: lang,
-                    label,
-                    url: proxiedSubtitleUrl(trkUrl),
-                    format: "VTT",
-                    isDefault: Boolean(trk.default),
-                    status: "ACTIVE",
-                  });
-                }
-              }
+        if (streamRes.results.skipData?.intro?.length === 2 && !aniIntroStart) {
+          aniIntroStart = streamRes.results.skipData.intro[0];
+          aniIntroEnd = streamRes.results.skipData.intro[1];
+        }
+        if (streamRes.results.skipData?.outro?.length === 2 && !aniOutroStart) {
+          aniOutroStart = streamRes.results.skipData.outro[0];
+        }
+
+        const tracks =
+          streamRes.results.tracks ||
+          streamRes.results.subtitles ||
+          (Array.isArray(streamRes.tracks) ? streamRes.tracks : []);
+
+        if (Array.isArray(tracks)) {
+          for (const trk of tracks) {
+            const trkUrl = trk.file || trk.url;
+            if (!trkUrl || trk.kind === "thumbnails") continue;
+            const lang = (trk.language || trk.lang || "en").toLowerCase();
+            const label = trk.label || (lang.startsWith("en") ? "English" : lang);
+            if (!aniSubs.some((s) => s.url === trkUrl)) {
+              aniSubs.push({
+                id: `sub-${srv.link_id}-${aniSubs.length}`,
+                language: lang,
+                label,
+                url: proxiedSubtitleUrl(trkUrl),
+                format: "VTT",
+                isDefault: Boolean(trk.default),
+                status: "ACTIVE",
+              });
             }
           }
-        } catch {
-          /* try next server */
         }
       }
+
+      return {
+        sources: aniSources,
+        subtitles: aniSubs,
+        introStart: aniIntroStart,
+        introEnd: aniIntroEnd,
+        outroStart: aniOutroStart,
+      };
     } catch (err) {
       console.error("Failed to resolve AniKoto servers:", err);
+      return null;
     }
-  }
+  };
 
-  // Resolve Sub Indo stream servers from Animasu API
-  try {
-    const animasuSources = await getAnimasuPlaybackSources({
-      animeSlug,
-      animeTitle: anime?.title || currentStored?.animeTitle,
-      altTitles: anime?.alternativeTitles,
-      episodeNumber: epNumber,
-    });
-    if (animasuSources.length > 0) {
-      // Put Sub Indo sources first for Indonesian audience
-      sources.unshift(...animasuSources);
+  const resolveAnimasu = async () => {
+    try {
+      return await getAnimasuPlaybackSources({
+        animeSlug,
+        animeTitle: anime?.title || currentStored?.animeTitle,
+        altTitles: anime?.alternativeTitles,
+        episodeNumber: epNumber,
+      });
+    } catch (err) {
+      console.error("Failed to resolve Animasu Sub Indo servers:", err);
+      return [] as PlaybackSource[];
     }
-  } catch (err) {
-    console.error("Failed to resolve Animasu Sub Indo servers:", err);
+  };
+
+  // Run AniKoto stream fetching and Animasu resolution concurrently!
+  const [aniKotoResult, animasuSources] = await Promise.all([
+    resolveAniKoto(),
+    resolveAnimasu(),
+  ]);
+
+  if (animasuSources && animasuSources.length > 0) {
+    sources.push(...animasuSources);
+  }
+  if (aniKotoResult) {
+    sources.push(...aniKotoResult.sources);
+    rawSubtitles.push(...aniKotoResult.subtitles);
+    if (aniKotoResult.introStart !== null) introStart = aniKotoResult.introStart;
+    if (aniKotoResult.introEnd !== null) introEnd = aniKotoResult.introEnd;
+    if (aniKotoResult.outroStart !== null) outroStart = aniKotoResult.outroStart;
   }
 
   if (sources.length === 0) {
@@ -994,6 +1034,10 @@ export async function getAnimeAvailability(animeId: string): Promise<AnimeAvaila
 }
 
 export async function getRelatedAnime(anime: AnimeDetail, limit = 8): Promise<AnimeSummary[]> {
+  const cacheKey = `catalog:related:${anime.slug}:${limit}`;
+  const hit = await cache().get<AnimeSummary[]>(cacheKey);
+  if (hit) return hit;
+
   const queryGenre = anime.genres?.[0] || anime.title.split(" ")[0] || "anime";
   const searchRes = await fetchAniKoto<any>(`/search?keyword=${encodeURIComponent(queryGenre)}`);
   const rawList = Array.isArray(searchRes?.results?.data)
@@ -1007,6 +1051,7 @@ export async function getRelatedAnime(anime: AnimeDetail, limit = 8): Promise<An
     .filter((item: AnimeSummary) => item.slug !== anime.slug)
     .slice(0, limit);
 
+  await cache().set(cacheKey, items, CACHE_TTL.catalog);
   return items;
 }
 

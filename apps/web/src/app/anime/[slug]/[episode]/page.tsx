@@ -5,7 +5,6 @@ import { getSessionUser } from "@/lib/auth";
 import {
   getAnimeBySlug,
   getAnimeEpisodes,
-  getEpisodeByNumber,
   getEpisodePlayback,
   getFavoriteIds,
   getRelatedAnime,
@@ -22,13 +21,20 @@ interface WatchPageProps {
 export async function generateMetadata({ params }: WatchPageProps): Promise<Metadata> {
   const { slug, episode: episodeSlug } = await params;
   const number = parseEpisodeSlug(episodeSlug);
-  const anime = await getAnimeBySlug(slug);
-
-  if (!anime || number === null) {
+  if (number === null) {
     return { title: "Episode tidak ditemukan", robots: { index: false, follow: false } };
   }
 
-  const episode = await getEpisodeByNumber(anime.id, number);
+  const [anime, episodes] = await Promise.all([
+    getAnimeBySlug(slug),
+    getAnimeEpisodes(slug),
+  ]);
+
+  if (!anime) {
+    return { title: "Episode tidak ditemukan", robots: { index: false, follow: false } };
+  }
+
+  const episode = episodes.find((ep) => ep.number === number) ?? null;
   if (!episode) {
     return { title: "Episode tidak ditemukan", robots: { index: false, follow: false } };
   }
@@ -57,17 +63,20 @@ export default async function WatchPage({ params }: WatchPageProps) {
   const number = parseEpisodeSlug(episodeSlug);
   if (number === null) notFound();
 
-  const anime = await getAnimeBySlug(slug);
+  const [anime, episodes, user] = await Promise.all([
+    getAnimeBySlug(slug),
+    getAnimeEpisodes(slug),
+    getSessionUser(),
+  ]);
+
   if (!anime) notFound();
 
-  const episode = await getEpisodeByNumber(anime.id, number);
+  const episode = episodes.find((ep) => ep.number === number) ?? null;
   if (!episode) notFound();
 
-  const [playback, episodes, related, user] = await Promise.all([
+  const [playback, related] = await Promise.all([
     getEpisodePlayback(episode.id, { animeSlug: anime.slug, episodeNumber: number }),
-    getAnimeEpisodes(anime.id),
     getRelatedAnime(anime, 6),
-    getSessionUser(),
   ]);
 
   if (!playback) notFound();
