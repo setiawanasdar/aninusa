@@ -2,6 +2,7 @@ import { historyQuerySchema } from "@aninusa/types";
 import { prisma } from "@/lib/db";
 import {
   assertSameOrigin,
+  enforceRateLimit,
   errorResponse,
   json,
   noStoreHeaders,
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
 export async function DELETE(request: Request) {
   try {
     await assertSameOrigin(request);
+    await enforceRateLimit(request, "public");
     const user = await requireApiUser();
     const url = new URL(request.url);
     const id = url.searchParams.get("id");

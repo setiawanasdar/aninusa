@@ -35,7 +35,7 @@ export function FavoriteButton({ animeId, initialFavorited, authenticated, class
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ animeId }),
           })
-        : await fetch(`/api/favorites/${animeId}`, { method: "DELETE" });
+        : await fetch(`/api/favorites/${encodeURIComponent(animeId)}`, { method: "DELETE" });
 
       if (!response.ok) throw new Error("request failed");
       router.refresh();

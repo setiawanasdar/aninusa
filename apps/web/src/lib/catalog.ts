@@ -734,7 +734,8 @@ export async function getEpisodePlayback(
       const animeId = infoRes?.results?.animeId ? String(infoRes.results.animeId) : animeSlug;
       const epRes = await fetchAniKoto<any>(`/episodes/${encodeURIComponent(animeId)}`);
       const epList = epRes?.results?.episodes || epRes?.results || [];
-      const match = epList.find((e: any) => e.episode_no === epNumber) || epList[0];
+      const match =
+        epList.find((e: any) => parseFloat(String(e.episode_no ?? "")) === epNumber) || epList[0];
       if (match?.server_ids) {
         serverIds = match.server_ids;
       }
