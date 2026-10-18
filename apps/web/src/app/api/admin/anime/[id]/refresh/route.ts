@@ -35,19 +35,38 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const admin = await requireApiAdmin();
     const { id } = await params;
 
-    const anime = await prisma.anime.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        title: true,
-        providerRefs: { select: { providerKey: true, externalId: true } },
-      },
-    });
+    let anime = await prisma.anime
+      .findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          providerRefs: { select: { providerKey: true, externalId: true } },
+        },
+      })
+      .catch(() => null);
 
-    if (!anime) throw errors.notFound("Anime tidak ditemukan");
-    if (!anime.providerRefs.length) {
-      throw errors.badRequest(
-        "Anime ini tidak memiliki referensi provider. Tambahkan episode secara manual atau sinkronkan provider terlebih dahulu.",
+    if (!anime || !anime.providerRefs.length) {
+      const { getAnimeBySlug, getAnimeEpisodes } = await import("@/lib/catalog");
+      const fetched = await getAnimeBySlug(id);
+      if (!fetched) throw errors.notFound("Anime tidak ditemukan di AniKoto API");
+
+      const eps = await getAnimeEpisodes(fetched.slug);
+      await afterCatalogMutation();
+
+      return json(
+        {
+          animeId: id,
+          results: [
+            {
+              providerKey: "anikoto",
+              ok: true,
+              message: `Berhasil diperbarui dari AniKoto API (${eps.length} episode)`,
+              episodes: eps.length,
+            },
+          ],
+        },
+        { headers: noStoreHeaders() },
       );
     }
 

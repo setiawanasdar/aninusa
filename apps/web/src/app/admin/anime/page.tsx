@@ -1,11 +1,9 @@
 import { requireAdminPage } from "@/lib/page-auth";
 import Link from "next/link";
 import { Plus, RefreshCw, Search, Sparkles } from "lucide-react";
-import { prisma } from "@/lib/db";
-import { DeleteButton } from "@/components/admin/delete-button";
 import { Pagination } from "@/components/pagination";
 import { AniKotoImporter } from "@/components/admin/anikoto-importer";
-import { pageToSkip } from "@aninusa/utils";
+import { listAnime } from "@/lib/catalog";
 
 interface AdminAnimePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -18,44 +16,17 @@ export default async function AdminAnimePage({ searchParams }: AdminAnimePagePro
   const page = Math.max(1, Number(typeof raw.page === "string" ? raw.page : "1") || 1);
   const perPage = 20;
 
-  const where = q
-    ? {
-        OR: [
-          { title: { contains: q, mode: "insensitive" as const } },
-          { englishTitle: { contains: q, mode: "insensitive" as const } },
-          { japaneseTitle: { contains: q, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
-
-  const [rows, total] = await Promise.all([
-    prisma.anime.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      skip: pageToSkip(page, perPage),
-      take: perPage,
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        type: true,
-        status: true,
-        year: true,
-        updatedAt: true,
-        _count: { select: { episodes: true } },
-      },
-    }),
-    prisma.anime.count({ where }),
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const result = await listAnime(q ? { q, page, perPage } : { page, perPage });
+  const rows = result.items;
+  const total = result.total;
+  const totalPages = result.totalPages;
 
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Kelola anime</h1>
-          <p className="mt-0.5 text-sm text-white/45">{total.toLocaleString("id-ID")} judul di katalog.</p>
+          <p className="mt-0.5 text-sm text-white/45">{total.toLocaleString("id-ID")} judul terhubung via AniKoto API.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/admin/providers" className="btn-secondary">
@@ -110,14 +81,16 @@ export default async function AdminAnimePage({ searchParams }: AdminAnimePagePro
             {rows.map((anime) => (
               <tr key={anime.id} className="hover:bg-white/[0.02]">
                 <td className="max-w-[280px] px-3 py-2.5">
-                  <Link href={`/admin/anime/${anime.id}`} className="block truncate font-medium text-white/90 hover:text-accent">
+                  <Link href={`/admin/anime/${anime.slug}`} className="block truncate font-medium text-white/90 hover:text-accent">
                     {anime.title}
                   </Link>
                   <span className="text-[11px] text-white/30">/{anime.slug}</span>
                 </td>
                 <td className="hidden px-3 py-2.5 text-xs text-white/55 sm:table-cell">{anime.type}</td>
                 <td className="hidden px-3 py-2.5 text-xs text-white/55 sm:table-cell">{anime.status}</td>
-                <td className="px-3 py-2.5 text-xs tabular-nums text-white/55">{anime._count.episodes}</td>
+                <td className="px-3 py-2.5 text-xs tabular-nums text-white/55">
+                  {anime.latestEpisode ?? anime.totalEpisodes ?? "-"}
+                </td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center justify-end gap-1">
                     <Link
@@ -127,16 +100,11 @@ export default async function AdminAnimePage({ searchParams }: AdminAnimePagePro
                       Lihat
                     </Link>
                     <Link
-                      href={`/admin/anime/${anime.id}`}
+                      href={`/admin/anime/${anime.slug}`}
                       className="rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:bg-accent/10"
                     >
-                      Edit
+                      Detail
                     </Link>
-                    <DeleteButton
-                      endpoint={`/api/admin/anime/${anime.id}`}
-                      confirmMessage={`Hapus "${anime.title}" beserta seluruh episode, sumber, dan subtitle?`}
-                      label=""
-                    />
                   </div>
                 </td>
               </tr>
