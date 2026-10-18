@@ -546,6 +546,14 @@ export function proxiedSubtitleUrl(rawUrl: string): string {
   return `/api/subtitles?url=${encodeURIComponent(rawUrl)}`;
 }
 
+export const ENABLE_EXPERIMENTAL_SUB_INDO =
+  process.env.ENABLE_EXPERIMENTAL_SUB_INDO !== "false";
+
+export function translatedSubtitleUrl(rawUrl: string, lang = "id"): string {
+  if (rawUrl.startsWith("/api/subtitles/translate")) return rawUrl;
+  return `/api/subtitles/translate?url=${encodeURIComponent(rawUrl)}&lang=${encodeURIComponent(lang)}`;
+}
+
 export async function getEpisodePlayback(
   episodeId: string,
   context?: { animeSlug?: string; episodeNumber?: number },
@@ -659,6 +667,25 @@ export async function getEpisodePlayback(
   const anime = await getAnimeBySlug(animeSlug);
   const currentIndex = episodes.findIndex((e) => e.number === currentEp.number);
 
+  const rawSubtitles: SubtitleTrack[] = [];
+  const subtitles: SubtitleTrack[] = [...rawSubtitles];
+
+  if (ENABLE_EXPERIMENTAL_SUB_INDO && rawSubtitles.length > 0) {
+    for (const sub of rawSubtitles) {
+      if (!sub.language.toLowerCase().startsWith("id")) {
+        subtitles.unshift({
+          id: `${sub.id}-id-auto`,
+          language: "id",
+          label: "Indonesia (Auto Terjemahan)",
+          url: translatedSubtitleUrl(sub.url, "id"),
+          format: "VTT",
+          isDefault: true,
+          status: "ACTIVE",
+        });
+      }
+    }
+  }
+
   const playback: EpisodePlayback = {
     episode: {
       ...currentEp,
@@ -667,7 +694,7 @@ export async function getEpisodePlayback(
       outroStart: outroStart ?? currentEp.outroStart,
     },
     sources,
-    subtitles: [],
+    subtitles,
     anime: {
       id: animeSlug,
       slug: animeSlug,
