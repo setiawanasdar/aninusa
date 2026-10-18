@@ -96,6 +96,15 @@
     @apply w-full rounded-lg border border-white/10 bg-ink-850 px-3.5 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
   }
 
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-results-button,
+  input[type="search"]::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+  }
+
   .label {
     @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/50;
   }
