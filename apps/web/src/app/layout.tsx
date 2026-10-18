@@ -44,11 +44,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg?v=2", type: "image/svg+xml" },
+      { url: "/favicon.ico?v=2", sizes: "any" },
     ],
-    shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico?v=2",
+    apple: "/apple-touch-icon.png?v=2",
   },
   alternates: { canonical: "/" },
 };
@@ -66,6 +66,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml" />
+        <link rel="alternate icon" href="/favicon.ico?v=2" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+      </head>
       <body className="flex min-h-screen flex-col">
         <a
           href="#main-content"
