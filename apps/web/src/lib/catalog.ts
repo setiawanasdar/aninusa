@@ -997,6 +997,8 @@ export async function listGenres(): Promise<GenreDto[]> {
     { name: "Game", slug: "game" },
     { name: "Harem", slug: "harem" },
     { name: "Ecchi", slug: "ecchi" },
+    { name: "Erotica", slug: "erotica" },
+    { name: "Hentai", slug: "hentai" },
   ];
 
   return GENRE_LIST.map((g) => ({
