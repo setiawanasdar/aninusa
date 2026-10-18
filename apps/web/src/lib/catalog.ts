@@ -224,6 +224,7 @@ function mapAniKotoItemToSummary(item: any): AnimeSummary {
     genres,
     studios: Array.isArray(item.studios) ? item.studios.filter(Boolean) : [],
     updatedAt: new Date().toISOString(),
+    synopsis: item.synopsis || item.description || null,
   };
 }
 

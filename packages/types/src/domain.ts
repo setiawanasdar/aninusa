@@ -46,6 +46,7 @@ export interface AnimeSummary {
   studios: string[];
   updatedAt: string;
   source?: string | null;
+  synopsis?: string | null;
 }
 
 export interface AnimeDetail extends AnimeSummary {

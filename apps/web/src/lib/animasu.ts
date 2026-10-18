@@ -23,6 +23,7 @@ export interface AnimasuListItem {
   status?: string;
   subStatus?: string;
   url?: string;
+  synopsis?: string;
 }
 
 export interface AnimasuAnimeDetailData {
@@ -159,6 +160,7 @@ export function mapAnimasuItemToSummary(item: AnimasuListItem): AnimeSummary {
     studios: [],
     updatedAt: new Date().toISOString(),
     source: "Animasu (Sub Indo)",
+    synopsis: item.synopsis || null,
   };
 }
 

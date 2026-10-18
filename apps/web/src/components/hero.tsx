@@ -97,7 +97,9 @@ export function Hero({ anime }: HeroProps) {
             {current.genres.length > 0 && (
               <span className="mr-2 font-medium text-white/85">{current.genres.slice(0, 3).join(" · ")}</span>
             )}
-            Tonton {current.title} dengan subtitle Indonesia dalam kualitas hingga 1080p.
+            {current.synopsis
+              ? current.synopsis.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()
+              : "Sinopsis belum tersedia untuk judul ini."}
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
