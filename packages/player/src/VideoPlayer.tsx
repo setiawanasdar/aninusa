@@ -746,7 +746,7 @@ export function VideoPlayer({
               // @ts-expect-error legacy browser fullscreen attributes
               webkitallowfullscreen="true"
               mozallowfullscreen="true"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+              referrerPolicy="no-referrer"
             />
             <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2">
               <button

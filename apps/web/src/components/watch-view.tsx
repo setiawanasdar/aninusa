@@ -202,6 +202,13 @@ export function WatchView({
             </button>
           </div>
 
+          {sources[activeSourceIndex]?.format === "EMBED" && (
+            <div className="flex items-start gap-1.5 px-1 text-[11px] text-white/40">
+              <span className="shrink-0 font-medium text-white/60">💡 Tips Server:</span>
+              <span>Jika pemutar tidak langsung berputar atau membuka tab baru, cukup tutup tab tersebut dan klik putar kembali, atau pilih opsi server lain di atas.</span>
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-3">
             <Link
               href={previousEpisode ? `/anime/${anime.slug}/episode-${formatEpisodeNumber(previousEpisode.number)}` : `/anime/${anime.slug}`}
