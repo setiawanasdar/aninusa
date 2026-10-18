@@ -73,10 +73,7 @@ export function SiteHeader({ user }: SiteHeaderProps) {
       }`}
     >
       <div className="container-page flex h-16 items-center gap-3 sm:gap-5">
-        <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="AniNusa beranda">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-[15px] font-black text-white">
-            A
-          </span>
+        <Link href="/" className="flex shrink-0 items-center" aria-label="AniNusa beranda">
           <span className="text-[17px] font-extrabold tracking-tight text-white">
             Ani<span className="text-accent">Nusa</span>
           </span>
