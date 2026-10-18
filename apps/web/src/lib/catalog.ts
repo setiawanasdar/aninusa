@@ -62,18 +62,34 @@ function extractList(res: any): any[] {
   return [];
 }
 
-function extractTotal(res: any, fallbackCount: number): number {
+function extractTotal(res: any, fallbackCount: number, perPage = 20): number {
   if (!res) return fallbackCount;
   const total =
     res.pagination?.totalItems ||
     res.results?.pagination?.totalItems ||
-    res.results?.totalItems;
+    res.results?.totalItems ||
+    res.totalItems ||
+    res.total;
   if (typeof total === "number" && total > 0) return total;
+
+  const pageSize =
+    res.pagination?.perPage ||
+    res.pagination?.pageSize ||
+    res.results?.pagination?.perPage ||
+    res.results?.pagination?.pageSize ||
+    (Array.isArray(res.results?.data) ? res.results.data.length : null) ||
+    (Array.isArray(res.results) ? res.results.length : null) ||
+    (Array.isArray(res.data) ? res.data.length : null) ||
+    (fallbackCount > 0 ? fallbackCount : perPage);
+
   const totalPages =
     res.pagination?.totalPages ||
     res.results?.pagination?.totalPages ||
-    res.results?.totalPages;
-  if (typeof totalPages === "number" && totalPages > 0) return totalPages * 30;
+    res.results?.totalPages ||
+    res.totalPages;
+  if (typeof totalPages === "number" && totalPages > 0) {
+    return totalPages * (pageSize > 0 ? pageSize : perPage);
+  }
   return fallbackCount;
 }
 
@@ -275,7 +291,17 @@ export async function getHomeSections(): Promise<HomeSections> {
   const seasonal = popular.slice(0, 14);
 
   // Enhance top candidates with full info (banner & synopsis) for the hero carousel
-  const heroCandidates = [...trending, ...popular].slice(0, 5);
+  // De-duplicate by slug to prevent double-fetching identical anime in trending and popular
+  const seenHeroSlugs = new Set<string>();
+  const heroCandidates: AnimeSummary[] = [];
+  for (const candidate of [...trending, ...popular]) {
+    if (!seenHeroSlugs.has(candidate.slug)) {
+      seenHeroSlugs.add(candidate.slug);
+      heroCandidates.push(candidate);
+      if (heroCandidates.length >= 5) break;
+    }
+  }
+
   const hero = await Promise.all(
     heroCandidates.map(async (candidate) => {
       try {
@@ -386,7 +412,7 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
       }
 
       items = combined;
-      total = extractTotal(resAniKoto, items.length) + animasuResults.length;
+      total = extractTotal(resAniKoto, items.length, perPage) + animasuResults.length;
     } else if (query.season) {
       const targetSeason = query.season.toUpperCase() as Season;
       const targetYear = query.year ?? new Date().getFullYear();
@@ -434,7 +460,7 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
           `/genre/${encodeURIComponent(genreSlug)}?page=${page}`,
         );
         items = extractList(res).map(mapAniKotoItemToSummary);
-        total = extractTotal(res, items.length);
+        total = extractTotal(res, items.length, perPage);
       } else {
         const params = new URLSearchParams();
         params.set("page", String(page));
@@ -453,14 +479,14 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
 
         const res = await fetchAniKoto<any>(`/filter?${params.toString()}`);
         items = extractList(res).map(mapAniKotoItemToSummary);
-        total = extractTotal(res, items.length);
+        total = extractTotal(res, items.length, perPage);
       }
     } else if (query.sort === "newest" || query.sort === "updated") {
       const res = await fetchAniKoto<any>(
         `/latest-updated?page=${page}`,
       );
       items = extractList(res).map(mapAniKotoItemToSummary);
-      total = extractTotal(res, items.length);
+      total = extractTotal(res, items.length, perPage);
     } else {
       const res = await fetchAniKoto<any>(
         `/most-popular?page=${page}`,
@@ -468,7 +494,7 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
       const list = extractList(res);
       if (list.length > 0) {
         items = list.map(mapAniKotoItemToSummary);
-        total = extractTotal(res, items.length);
+        total = extractTotal(res, items.length, perPage);
       } else {
         const homeRes = await fetchAniKoto<any>("");
         const combined = [
@@ -572,7 +598,7 @@ export async function getAnimeEpisodes(animeIdOrSlug: string): Promise<EpisodeDt
           const epNum =
             typeof ep.episode_no === "number"
               ? ep.episode_no
-              : parseInt(String(ep.episode_no || "1"), 10) || 1;
+              : parseFloat(String(ep.episode_no || "1")) || 1;
           const epId = String(ep.id || `${targetSlug}-${epNum}`);
 
           const meta: StoredEpisodeMeta = {
@@ -673,7 +699,7 @@ export async function getEpisodePlayback(
   if (episodeId.includes(":")) {
     const parts = episodeId.split(":");
     if (!animeSlug) animeSlug = cleanSlug(parts[0] || "");
-    if (!epNumber) epNumber = parseInt(parts[1] || "1", 10);
+    if (!epNumber) epNumber = parseFloat(parts[1] || "1") || 1;
   }
 
   const stored =
@@ -715,6 +741,7 @@ export async function getEpisodePlayback(
   const anime = await getAnimeBySlug(animeSlug);
 
   const sources: PlaybackSource[] = [];
+  const rawSubtitles: SubtitleTrack[] = [];
   let introStart: number | null = null;
   let introEnd: number | null = null;
   let outroStart: number | null = null;
@@ -746,6 +773,32 @@ export async function getEpisodePlayback(
             }
             if (streamRes.results.skipData?.outro?.length === 2) {
               outroStart = streamRes.results.skipData.outro[0];
+            }
+
+            // Extract subtitle tracks from stream response
+            const tracks =
+              streamRes.results.tracks ||
+              streamRes.results.subtitles ||
+              (Array.isArray(streamRes.tracks) ? streamRes.tracks : []);
+
+            if (Array.isArray(tracks)) {
+              for (const trk of tracks) {
+                const trkUrl = trk.file || trk.url;
+                if (!trkUrl || trk.kind === "thumbnails") continue;
+                const lang = (trk.language || trk.lang || "en").toLowerCase();
+                const label = trk.label || (lang.startsWith("en") ? "English" : lang);
+                if (!rawSubtitles.some((s) => s.url === trkUrl)) {
+                  rawSubtitles.push({
+                    id: `sub-${srv.link_id}-${rawSubtitles.length}`,
+                    language: lang,
+                    label,
+                    url: proxiedSubtitleUrl(trkUrl),
+                    format: "VTT",
+                    isDefault: Boolean(trk.default),
+                    status: "ACTIVE",
+                  });
+                }
+              }
             }
           }
         } catch {
@@ -787,17 +840,51 @@ export async function getEpisodePlayback(
   }
   const currentIndex = episodes.findIndex((e) => e.number === currentEp.number);
 
-  const rawSubtitles: SubtitleTrack[] = [];
+  // Check Prisma database for active subtitles associated with this episode
+  if (rawSubtitles.length === 0) {
+    try {
+      const dbSubtitles = await prisma.subtitle.findMany({
+        where: {
+          episode: {
+            anime: { slug: animeSlug },
+            episodeNumber: epNumber,
+          },
+          status: "ACTIVE",
+        },
+        select: { id: true, language: true, label: true, url: true, isDefault: true, format: true },
+      });
+      for (const sub of dbSubtitles) {
+        rawSubtitles.push({
+          id: sub.id,
+          language: sub.language,
+          label: sub.label,
+          url: sub.url,
+          format: sub.format as "VTT",
+          isDefault: sub.isDefault,
+          status: "ACTIVE",
+        });
+      }
+    } catch {
+      /* ignore DB lookup */
+    }
+  }
+
   const subtitles: SubtitleTrack[] = [...rawSubtitles];
 
   if (ENABLE_EXPERIMENTAL_SUB_INDO && rawSubtitles.length > 0) {
-    for (const sub of rawSubtitles) {
-      if (!sub.language.toLowerCase().startsWith("id")) {
+    const hasIndo = rawSubtitles.some((sub) => sub.language.toLowerCase().startsWith("id"));
+    if (!hasIndo) {
+      const sourceSub =
+        rawSubtitles.find((sub) => sub.isDefault) ||
+        rawSubtitles.find((sub) => sub.language.toLowerCase().startsWith("en")) ||
+        rawSubtitles[0];
+
+      if (sourceSub) {
         subtitles.unshift({
-          id: `${sub.id}-id-auto`,
+          id: `${sourceSub.id}-id-auto`,
           language: "id",
           label: "Indonesia (Auto Terjemahan)",
-          url: translatedSubtitleUrl(sub.url, "id"),
+          url: translatedSubtitleUrl(sourceSub.url, "id"),
           format: "VTT",
           isDefault: true,
           status: "ACTIVE",

@@ -408,7 +408,7 @@ export function VideoPlayer({
       onProgress({
         currentTime: Math.floor(video.currentTime),
         duration: Math.floor(total),
-        completed: total > 0 && video.currentTime >= total - 15,
+        completed: total > 0 && (video.currentTime >= total - 20 || video.currentTime / total >= 0.95),
       });
     },
     [onProgress],

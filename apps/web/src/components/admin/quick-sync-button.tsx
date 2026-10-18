@@ -14,19 +14,19 @@ export function QuickSyncButton() {
     setMessage(null);
 
     try {
-      // Sync AniKoto catalog
-      const resAniKoto = await fetch("/api/admin/sync", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ providerKey: "anikoto", mode: "FULL" }),
-      });
-
-      // Sync Animasu catalog
-      const resAnimasu = await fetch("/api/admin/sync", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ providerKey: "animasu", mode: "INCREMENTAL" }),
-      });
+      // Sync AniKoto and Animasu catalogs concurrently
+      const [resAniKoto, resAnimasu] = await Promise.all([
+        fetch("/api/admin/sync", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ providerKey: "anikoto", mode: "FULL" }),
+        }),
+        fetch("/api/admin/sync", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ providerKey: "animasu", mode: "INCREMENTAL" }),
+        }),
+      ]);
 
       if (resAniKoto.ok && resAnimasu.ok) {
         setMessage("Katalog AniKoto & Animasu berhasil disinkronkan!");
@@ -46,7 +46,7 @@ export function QuickSyncButton() {
   return (
     <div className="flex items-center gap-2">
       {message && (
-        <span className="hidden text-xs font-medium text-emerald-400 sm:inline animate-fade-in">
+        <span className="hidden text-xs font-medium text-emerald-400 sm:inline animate-fade-up">
           ✓ {message}
         </span>
       )}

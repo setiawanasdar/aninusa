@@ -29,7 +29,8 @@ export async function POST(request: Request) {
     const duration = input.duration || episode.duration || 0;
     const progress = Math.max(0, Math.min(input.progress, duration || input.progress));
     const completed =
-      input.completed ?? (duration > 0 ? progress >= duration - 20 || progress / duration >= 0.95 : false);
+      input.completed === true ||
+      (duration > 0 ? progress >= duration - 20 || progress / duration >= 0.95 : false);
 
     const history = await prisma.watchHistory.upsert({
       where: { userId_episodeId: { userId: user.id, episodeId: episode.id } },

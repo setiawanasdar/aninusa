@@ -20,6 +20,7 @@ export interface AnimasuListItem {
   poster: string;
   type?: string;
   latestEpisode?: string;
+  status?: string;
   subStatus?: string;
   url?: string;
 }
@@ -95,7 +96,7 @@ function mapAnimasuType(raw?: string): AnimeType {
 
 function mapAnimasuStatus(raw?: string): AnimeStatus {
   const norm = (raw ?? "").toLowerCase();
-  if (norm.includes("selesai") || norm.includes("finished") || norm.includes("✓")) return "COMPLETED";
+  if (norm.includes("selesai") || norm.includes("finished") || norm.includes("completed") || norm.includes("✓")) return "COMPLETED";
   if (norm.includes("tayang") || norm.includes("airing") || norm.includes("ongoing") || norm.includes("🔥")) return "ONGOING";
   if (norm.includes("segera") || norm.includes("upcoming") || norm.includes("not yet")) return "UPCOMING";
   return "COMPLETED";
@@ -145,7 +146,7 @@ export function mapAnimasuItemToSummary(item: AnimasuListItem): AnimeSummary {
     poster,
     banner: poster,
     type: mapAnimasuType(item.type),
-    status: mapAnimasuStatus(item.subStatus),
+    status: mapAnimasuStatus(item.status || item.subStatus),
     year: null,
     season: null,
     score: null,
@@ -182,12 +183,12 @@ export function mapAnimasuDetailToAnime(data: AnimasuAnimeDetailData): AnimeDeta
     slug: data.slug,
     title: cleanTitle,
     englishTitle: cleanTitle,
-    japaneseTitle: data.alterTitle || null,
+    japaneseTitle: null,
     alternativeTitles: altTitles,
     poster,
     banner: poster,
     type: mapAnimasuType(data.type),
-    status: mapAnimasuStatus(data.status),
+    status: mapAnimasuStatus(data.status || (data as any).subStatus),
     year,
     season: null,
     score,
@@ -275,9 +276,9 @@ export async function getAnimasuEpisodes(slug: string): Promise<EpisodeDto[]> {
   // Animasu lists episodes newest-first; we reverse so Episode 1 is first
   const reversed = [...rawList].reverse();
   const episodes: EpisodeDto[] = reversed.map((ep, idx) => {
-    const slugMatch = ep.episodeSlug.match(/-episode-(\d+)(?:-|$)/i);
-    const titleMatch = ep.title.match(/(?:episode|ep\.?)\s*(\d+)/i);
-    const num = slugMatch ? parseInt(slugMatch[1], 10) : titleMatch ? parseInt(titleMatch[1], 10) : idx + 1;
+    const slugMatch = ep.episodeSlug.match(/-episode-(\d+(?:\.\d+)?)(?:-|$)/i);
+    const titleMatch = ep.title.match(/(?:episode|ep\.?)\s*(\d+(?:\.\d+)?)/i);
+    const num = slugMatch ? parseFloat(slugMatch[1]) : titleMatch ? parseFloat(titleMatch[1]) : idx + 1;
 
     return {
       id: `${clean}:${num}`,
@@ -408,10 +409,10 @@ export async function getAnimasuPlaybackSources(params: {
 
   // Find matching episode
   let targetEp = epList.find((ep) => {
-    const slugMatch = ep.episodeSlug.match(/-episode-(\d+)(?:-|$)/i);
-    if (slugMatch && parseInt(slugMatch[1], 10) === episodeNumber) return true;
-    const titleMatch = ep.title.match(/(?:episode|ep\.?)\s*(\d+)/i);
-    if (titleMatch && parseInt(titleMatch[1], 10) === episodeNumber) return true;
+    const slugMatch = ep.episodeSlug.match(/-episode-(\d+(?:\.\d+)?)(?:-|$)/i);
+    if (slugMatch && parseFloat(slugMatch[1]) === episodeNumber) return true;
+    const titleMatch = ep.title.match(/(?:episode|ep\.?)\s*(\d+(?:\.\d+)?)/i);
+    if (titleMatch && parseFloat(titleMatch[1]) === episodeNumber) return true;
     return false;
   });
 
