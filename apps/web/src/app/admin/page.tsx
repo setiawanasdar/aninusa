@@ -12,6 +12,8 @@ import {
 import { getAdminStats } from "@/lib/admin";
 import { formatRelativeTime } from "@aninusa/utils";
 
+import { QuickSyncButton } from "@/components/admin/quick-sync-button";
+
 export default async function AdminDashboardPage() {
   await requireAdminPage("/admin");
   const stats = await getAdminStats();
@@ -34,12 +36,13 @@ export default async function AdminDashboardPage() {
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Dasbor admin</h1>
           <p className="mt-0.5 text-sm text-white/45">Ringkasan katalog, provider, dan kesehatan sumber.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <QuickSyncButton />
+          <Link href="/admin/providers" className="btn-secondary">
+            <RefreshCw className="h-4 w-4" aria-hidden="true" /> Provider
+          </Link>
           <Link href="/admin/anime/new" className="btn-primary">
             Tambah anime
-          </Link>
-          <Link href="/admin/providers" className="btn-secondary">
-            <RefreshCw className="h-4 w-4" aria-hidden="true" /> Sinkronisasi
           </Link>
         </div>
       </header>
@@ -81,7 +84,7 @@ export default async function AdminDashboardPage() {
                     {anime.title}
                   </Link>
                   <p className="text-[11px] text-white/35">
-                    {[anime.status, anime.year].filter(Boolean).join(" ?? ")}
+                    {[anime.status, anime.year].filter(Boolean).join(" · ")}
                   </p>
                 </div>
                 <Link
@@ -110,11 +113,11 @@ export default async function AdminDashboardPage() {
               <li key={job.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="min-w-0">
                   <p className="truncate text-sm text-white/85">
-                    {job.providerKey} ?? {job.mode}
+                    {job.providerKey} · {job.mode}
                   </p>
                   <p className="text-[11px] text-white/35">
                     {formatRelativeTime(job.createdAt)}
-                    {job.error ? ` ?? ${job.error.slice(0, 60)}` : ""}
+                    {job.error ? ` · ${job.error.slice(0, 60)}` : ""}
                   </p>
                 </div>
                 <span

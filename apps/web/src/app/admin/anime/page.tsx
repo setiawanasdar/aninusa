@@ -26,7 +26,7 @@ export default async function AdminAnimePage({ searchParams }: AdminAnimePagePro
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Kelola anime</h1>
-          <p className="mt-0.5 text-sm text-white/45">{total.toLocaleString("id-ID")} judul terhubung via AniKoto API.</p>
+          <p className="mt-0.5 text-sm text-white/45">{total.toLocaleString("id-ID")} judul terhubung via AniKoto &amp; Animasu Streaming API.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/admin/providers" className="btn-secondary">

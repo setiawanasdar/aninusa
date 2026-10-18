@@ -96,15 +96,15 @@ export default async function AdminHealthPage() {
                   </td>
                   <td className="px-3 py-2 font-mono text-white/50">{source.provider}</td>
                   <td className="px-3 py-2 text-white/50">
-                    {source.quality > 0 ? `${source.quality}p` : "Auto"} ?? {source.format}
+                    {source.quality > 0 ? `${source.quality}p` : "Auto"} · {source.format}
                   </td>
                   <td className="px-3 py-2">
                     <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusColor[source.status] ?? ""}`}>
                       {source.status}
                     </span>
-                    <span className="ml-1 text-[10px] text-white/30">??{source.failureCount}</span>
+                    <span className="ml-1 text-[10px] text-white/30">×{source.failureCount}</span>
                   </td>
-                  <td className="px-3 py-2 text-white/45">{source.lastHttpStatus ?? "???"}</td>
+                  <td className="px-3 py-2 text-white/45">{source.lastHttpStatus ?? "-"}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-white/35">
                     {source.lastCheckedAt ? formatRelativeTime(source.lastCheckedAt) : "belum"}
                   </td>
@@ -175,11 +175,11 @@ export default async function AdminHealthPage() {
                 {check.status}
               </span>
               <span className="truncate text-white/45">
-                {check.videoSource ? `video ?? ${check.videoSource.provider}` : `subtitle ?? ${check.subtitle?.language ?? "?"}`}
-                {check.error ? ` ?? ${check.error}` : ""}
+                {check.videoSource ? `video · ${check.videoSource.provider}` : `subtitle · ${check.subtitle?.language ?? "?"}`}
+                {check.error ? ` · ${check.error}` : ""}
               </span>
               <span className="ml-auto shrink-0 text-white/25">
-                {check.latencyMs ?? 0}ms ?? {formatRelativeTime(check.checkedAt)}
+                {check.latencyMs ?? 0}ms · {formatRelativeTime(check.checkedAt)}
               </span>
             </li>
           ))}

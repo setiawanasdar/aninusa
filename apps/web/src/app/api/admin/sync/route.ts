@@ -23,22 +23,106 @@ export async function POST(request: Request) {
     const input = await parseJson(request, syncSchema);
 
     let result;
-    if (input.providerKey === "anikoto" || !input.providerKey) {
+    const providerKey = input.providerKey || "anikoto";
+
+    if (providerKey === "anikoto") {
       await invalidateCatalogCache();
       const { getHomeSections } = await import("@/lib/catalog");
       const sections = await getHomeSections();
       const totalCount = sections.trending.length + sections.popular.length + sections.latestEpisodes.length;
 
+      const provider = await prisma.provider
+        .upsert({
+          where: { key: "anikoto" },
+          update: { lastSyncAt: new Date(), enabled: true },
+          create: {
+            key: "anikoto",
+            name: "AniKoto Direct Streaming API",
+            kind: "METADATA",
+            baseUrl: "https://anikototvapi.vercel.app",
+            enabled: true,
+            lastSyncAt: new Date(),
+          },
+        })
+        .catch(() => null);
+
+      const stats = {
+        created: 0,
+        updated: totalCount,
+        failed: 0,
+        episodes: sections.latestEpisodes.length,
+        message: `Katalog AniKoto API berhasil disinkronkan (${totalCount} anime aktif)`,
+      };
+
+      const job = await prisma.ingestionJob
+        .create({
+          data: {
+            providerId: provider?.id ?? null,
+            providerKey: "anikoto",
+            type: "DIRECT_API",
+            mode: input.mode || "INCREMENTAL",
+            status: "SUCCEEDED",
+            attempts: 1,
+            stats,
+            startedAt: new Date(),
+            finishedAt: new Date(),
+          },
+        })
+        .catch(() => null);
+
       result = {
-        jobId: `sync-anikoto-${Date.now()}`,
+        jobId: job?.id || `sync-anikoto-${Date.now()}`,
         status: "SUCCEEDED",
-        stats: {
-          created: 0,
-          updated: totalCount,
-          failed: 0,
-          episodes: sections.latestEpisodes.length,
-          message: `Katalog AniKoto API berhasil disinkronkan (${totalCount} anime aktif)`,
-        },
+        stats,
+      };
+    } else if (providerKey === "animasu" || providerKey === "provider-animasu") {
+      await invalidateCatalogCache();
+      const { getAnimasuLatest } = await import("@/lib/animasu");
+      const latest = await getAnimasuLatest(1);
+
+      const provider = await prisma.provider
+        .upsert({
+          where: { key: "animasu" },
+          update: { lastSyncAt: new Date(), enabled: true },
+          create: {
+            key: "animasu",
+            name: "Animasu Sub Indo API",
+            kind: "VIDEO",
+            baseUrl: "https://animasu-api-lilac.vercel.app",
+            enabled: true,
+            lastSyncAt: new Date(),
+          },
+        })
+        .catch(() => null);
+
+      const stats = {
+        created: 0,
+        updated: latest.length,
+        failed: 0,
+        episodes: latest.length,
+        message: `Katalog Animasu Sub Indo API berhasil disinkronkan (${latest.length} update terbaru)`,
+      };
+
+      const job = await prisma.ingestionJob
+        .create({
+          data: {
+            providerId: provider?.id ?? null,
+            providerKey: "animasu",
+            type: "DIRECT_API",
+            mode: input.mode || "INCREMENTAL",
+            status: "SUCCEEDED",
+            attempts: 1,
+            stats,
+            startedAt: new Date(),
+            finishedAt: new Date(),
+          },
+        })
+        .catch(() => null);
+
+      result = {
+        jobId: job?.id || `sync-animasu-${Date.now()}`,
+        status: "SUCCEEDED",
+        stats,
       };
     } else {
       try {

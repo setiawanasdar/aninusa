@@ -84,7 +84,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   />
                 </td>
                 <td className="hidden px-3 py-2.5 text-[11px] text-white/45 sm:table-cell">
-                  {user._count.favorites} favorit ?? {user._count.watchHistory} riwayat
+                  {user._count.favorites} favorit · {user._count.watchHistory} riwayat
                 </td>
                 <td className="hidden whitespace-nowrap px-3 py-2.5 text-[11px] text-white/35 md:table-cell">
                   {formatRelativeTime(user.createdAt)}
@@ -97,7 +97,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                       label=""
                     />
                   ) : (
-                    <span className="text-[10px] text-white/25">???</span>
+                    <span className="text-[10px] text-white/25">-</span>
                   )}
                 </td>
               </tr>

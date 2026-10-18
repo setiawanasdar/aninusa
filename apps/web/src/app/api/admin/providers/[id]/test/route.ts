@@ -27,6 +27,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         latencyMs,
         message: res?.ok ? `AniKoto API terhubung dan aktif (${latencyMs}ms)` : "AniKoto API merespons",
       };
+    } else if (providerKey === "animasu" || providerKey === "provider-animasu") {
+      const start = Date.now();
+      const res = await fetch("https://animasu-api-lilac.vercel.app/api/latest", {
+        signal: AbortSignal.timeout(6000),
+      }).catch(() => null);
+      const latencyMs = Date.now() - start;
+      result = {
+        ok: res?.ok ?? false,
+        latencyMs,
+        message: res?.ok
+          ? `Animasu Sub Indo API terhubung dan aktif (${latencyMs}ms)`
+          : "Animasu Sub Indo API gagal merespons",
+      };
     } else {
       result = await testProvider(providerKey);
     }
