@@ -120,6 +120,15 @@ export function cleanAnimasuTitle(raw: string): string {
     .trim();
 }
 
+export function cleanIframeUrl(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/&amp;/g, "&")
+    .replace(/&#038;/g, "&")
+    .replace(/&#38;/g, "&")
+    .trim();
+}
+
 export function mapAnimasuItemToSummary(item: AnimasuListItem): AnimeSummary {
   const cleanTitle = cleanAnimasuTitle(item.title);
   const epMatch = (item.latestEpisode || "").match(/(\d+)/);
@@ -427,39 +436,41 @@ export async function getAnimasuPlaybackSources(params: {
   const sources: PlaybackSource[] = [];
 
   for (let i = 0; i < serverItems.length; i++) {
-    const srv = serverItems[i];
-    if (!srv?.iframeUrl) continue;
-    const quality = parseQuality(srv.label);
-    const cleanLabel = srv.label ? srv.label.trim() : `${quality}p`;
+      const srv = serverItems[i];
+      if (!srv?.iframeUrl) continue;
+      const cleanUrl = cleanIframeUrl(srv.iframeUrl);
+      const quality = parseQuality(srv.label);
+      const cleanLabel = srv.label ? srv.label.trim() : `${quality}p`;
 
-    sources.push({
-      id: `animasu-${targetEp.episodeSlug}-${i}-${quality}`,
-      quality,
-      format: "EMBED",
-      codec: null,
-      language: "id",
-      url: srv.iframeUrl,
-      label: `Sub Indo (${cleanLabel})`,
-      status: "ACTIVE",
-    });
-  }
-
-  // If no server item had iframeUrl, check defaultIframe / streamUrl
-  if (sources.length === 0) {
-    const fallbackUrl = watchData.defaultIframe || watchData.streamUrl;
-    if (fallbackUrl) {
       sources.push({
-        id: `animasu-${targetEp.episodeSlug}-default`,
-        quality: 1080,
+        id: `animasu-${targetEp.episodeSlug}-${i}-${quality}`,
+        quality,
         format: "EMBED",
         codec: null,
         language: "id",
-        url: fallbackUrl,
-        label: "Sub Indo (Default)",
+        url: cleanUrl,
+        label: `Sub Indo (${cleanLabel})`,
         status: "ACTIVE",
       });
     }
-  }
+
+    // If no server item had iframeUrl, check defaultIframe / streamUrl
+    if (sources.length === 0) {
+      const fallbackRaw = watchData.defaultIframe || watchData.streamUrl;
+      if (fallbackRaw) {
+        const fallbackUrl = cleanIframeUrl(fallbackRaw);
+        sources.push({
+          id: `animasu-${targetEp.episodeSlug}-default`,
+          quality: 1080,
+          format: "EMBED",
+          codec: null,
+          language: "id",
+          url: fallbackUrl,
+          label: "Sub Indo (Default)",
+          status: "ACTIVE",
+        });
+      }
+    }
 
   if (sources.length > 0) {
     await cache().set(cacheKey, sources, CACHE_TTL.playback);

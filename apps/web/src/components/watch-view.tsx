@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, ListVideo, Server, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListVideo, Maximize, Server, Star } from "lucide-react";
 import { VideoPlayer } from "@aninusa/player";
 import type { AnimeSummary, EpisodeDto, EpisodePlayback } from "@aninusa/types";
 import { formatEpisodeNumber } from "@aninusa/utils";
@@ -47,14 +47,6 @@ export function WatchView({
   useEffect(() => {
     setActiveSourceIndex(0);
   }, [episode.id]);
-
-  const activeSources = useMemo(() => {
-    if (!sources || sources.length === 0) return [];
-    if (activeSourceIndex === 0) return sources;
-    const active = sources[activeSourceIndex];
-    if (!active) return sources;
-    return [active, ...sources.filter((_, i) => i !== activeSourceIndex)];
-  }, [sources, activeSourceIndex]);
 
   useEffect(() => {
     if (initialProgress > 0) {
@@ -125,7 +117,8 @@ export function WatchView({
         <div className="min-w-0 space-y-4">
           <div className={theater ? "" : "overflow-hidden rounded-xl"}>
             <VideoPlayer
-              sources={activeSources}
+              sources={sources}
+              selectedSourceIndex={activeSourceIndex}
               subtitles={subtitles}
               poster={episode.thumbnail ?? anime.poster}
               animeTitle={anime.title}
@@ -151,8 +144,8 @@ export function WatchView({
             />
           </div>
 
-          {sources.length > 1 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#16161c] px-3.5 py-2.5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#16161c] px-3.5 py-2.5 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
                 <Server className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
                 <span>Pilih Server:</span>
@@ -179,7 +172,35 @@ export function WatchView({
                 })}
               </div>
             </div>
-          )}
+
+            <button
+              type="button"
+              onClick={() => {
+                const container = document.querySelector(".anp-root");
+                if (container) {
+                  if (document.fullscreenElement) {
+                    void document.exitFullscreen();
+                    if (typeof screen !== "undefined" && screen.orientation) {
+                      try {
+                        void (screen.orientation as any).unlock?.();
+                      } catch {}
+                    }
+                  } else {
+                    void container.requestFullscreen();
+                    if (typeof screen !== "undefined" && screen.orientation) {
+                      try {
+                        void (screen.orientation as any).lock?.("landscape")?.catch?.(() => undefined);
+                      } catch {}
+                    }
+                  }
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/85 transition-colors hover:bg-white/15 hover:text-white"
+            >
+              <Maximize className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+              <span>Layar Penuh</span>
+            </button>
+          </div>
 
           <div className="flex items-center justify-between gap-3">
             <Link

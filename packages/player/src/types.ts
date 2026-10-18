@@ -40,6 +40,7 @@ export interface SubtitleStyle {
 
 export interface VideoPlayerProps {
   sources: PlayerSource[];
+  selectedSourceIndex?: number;
   subtitles?: PlayerSubtitle[];
   poster?: string | null;
   animeTitle: string;

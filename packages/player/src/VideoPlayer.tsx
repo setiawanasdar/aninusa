@@ -87,6 +87,7 @@ function writeStored(key: string, value: unknown): void {
 
 export function VideoPlayer({
   sources,
+  selectedSourceIndex,
   subtitles = [],
   poster,
   animeTitle,
@@ -146,12 +147,16 @@ export function VideoPlayer({
 
   const playerId = useId();
 
-  const orderedSources = useMemo(
-    () => [...sources].sort((a, b) => (a.quality === 0 ? -1 : b.quality === 0 ? 1 : b.quality - a.quality)),
-    [sources],
-  );
+  const orderedSources = useMemo(() => {
+    if (sources.some((s) => s.format === "EMBED")) return sources;
+    return [...sources].sort((a, b) => (a.quality === 0 ? -1 : b.quality === 0 ? 1 : b.quality - a.quality));
+  }, [sources]);
 
-  const activeSource: PlayerSource | undefined = orderedSources[sourceIndex];
+  const activeSource: PlayerSource | undefined =
+    typeof selectedSourceIndex === "number" && sources[selectedSourceIndex]
+      ? sources[selectedSourceIndex]
+      : orderedSources[sourceIndex] ?? sources[0];
+
   const isEmbed = Boolean(
     activeSource &&
       (activeSource.format === "EMBED" || /megaplay\.buzz|\/stream\//i.test(activeSource.url)),
@@ -455,8 +460,22 @@ export function VideoPlayer({
     try {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
+        if (typeof screen !== "undefined" && screen.orientation) {
+          try {
+            void (screen.orientation as any).unlock?.();
+          } catch {
+            /* ignore */
+          }
+        }
       } else {
         await container.requestFullscreen();
+        if (typeof screen !== "undefined" && screen.orientation) {
+          try {
+            void (screen.orientation as any).lock?.("landscape")?.catch?.(() => undefined);
+          } catch {
+            /* ignore */
+          }
+        }
       }
     } catch {
       /* browsers can reject fullscreen without a user gesture */
@@ -716,13 +735,41 @@ export function VideoPlayer({
 
       <div className="relative aspect-video w-full">
         {isEmbed && activeSource ? (
-          <iframe
-            src={activeSource.url}
-            title={`Pemutar video ${animeTitle} episode ${episodeNumber}`}
-            className="h-full w-full bg-black border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
+          <>
+            <iframe
+              key={activeSource.id || activeSource.url}
+              src={activeSource.url}
+              title={`Pemutar video ${animeTitle} episode ${episodeNumber}`}
+              className="h-full w-full bg-black border-0"
+              allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *; accelerometer *; gyroscope *"
+              allowFullScreen
+              // @ts-expect-error legacy browser fullscreen attributes
+              webkitallowfullscreen="true"
+              mozallowfullscreen="true"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            />
+            <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/80 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition-all hover:bg-black hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
+                aria-label={fullscreen ? "Keluar layar penuh" : "Layar penuh"}
+                title={fullscreen ? "Keluar layar penuh" : "Layar penuh"}
+              >
+                {fullscreen ? (
+                  <>
+                    <Minimize className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="hidden sm:inline">Keluar</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize className="h-3.5 w-3.5 text-[#ff3b5c]" aria-hidden="true" />
+                    <span className="hidden sm:inline">Layar Penuh</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </>
         ) : (
           <video
             ref={videoRef}
