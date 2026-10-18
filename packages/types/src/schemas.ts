@@ -85,14 +85,14 @@ export const loginSchema = z.object({
 });
 
 export const watchProgressSchema = z.object({
-  episodeId: z.string().trim().min(10).max(64),
+  episodeId: z.string().trim().min(1).max(255),
   progress: z.coerce.number().int().min(0).max(86_400),
   duration: z.coerce.number().int().min(0).max(86_400),
   completed: z.boolean().optional(),
 });
 
 export const favoriteSchema = z.object({
-  animeId: z.string().trim().min(10).max(64),
+  animeId: z.string().trim().min(1).max(255),
 });
 
 export const historyQuerySchema = z.object({

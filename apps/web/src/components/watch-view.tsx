@@ -172,10 +172,20 @@ export function WatchView({
                 >
                   {anime.title}
                 </Link>
-                <h1 className="mt-0.5 text-sm font-medium text-white/60">
-                  Episode {formatEpisodeNumber(episode.number)}
-                  {episode.title ? ` ?? ${episode.title}` : ""}
-                </h1>
+                {(() => {
+                  const epLabel = `Episode ${formatEpisodeNumber(episode.number)}`;
+                  const titleClean = episode.title?.trim();
+                  const showCustomTitle =
+                    titleClean &&
+                    titleClean.toLowerCase() !== epLabel.toLowerCase() &&
+                    titleClean.toLowerCase() !== `episode ${episode.number}`.toLowerCase();
+                  return (
+                    <h1 className="mt-0.5 text-sm font-medium text-white/60">
+                      {epLabel}
+                      {showCustomTitle ? ` — ${titleClean}` : ""}
+                    </h1>
+                  );
+                })()}
               </div>
               <FavoriteButton
                 animeId={anime.id}
@@ -203,10 +213,9 @@ export function WatchView({
               )}
             </div>
 
-            <p className="prose-synopsis max-w-3xl">
-              {episode.description ??
-                `Tonton ${anime.title} episode ${formatEpisodeNumber(episode.number)} dengan subtitle Indonesia. Pilih kualitas hingga 1080p sesuai sumber resmi yang tersedia.`}
-            </p>
+            {episode.description ? (
+              <p className="prose-synopsis max-w-3xl">{episode.description}</p>
+            ) : null}
           </section>
 
           {related.length > 0 && (

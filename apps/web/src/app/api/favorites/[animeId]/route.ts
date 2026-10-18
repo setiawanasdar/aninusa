@@ -8,8 +8,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ a
     await assertSameOrigin(request);
     const user = await requireApiUser();
     const { animeId } = await params;
+    const anime = await prisma.anime.findFirst({
+      where: { OR: [{ id: animeId }, { slug: animeId }] },
+      select: { id: true },
+    });
 
-    await prisma.favorite.deleteMany({ where: { userId: user.id, animeId } });
+    await prisma.favorite.deleteMany({
+      where: {
+        userId: user.id,
+        animeId: { in: [animeId, anime?.id].filter(Boolean) as string[] },
+      },
+    });
     return json({ ok: true }, { headers: noStoreHeaders() });
   } catch (error) {
     return errorResponse(error);

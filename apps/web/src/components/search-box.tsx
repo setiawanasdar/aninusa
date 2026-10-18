@@ -38,9 +38,8 @@ export function SearchBox({ autoFocus = false, initialQuery = "", className = ""
         const response = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&perPage=6`, {
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error("search failed");
         const payload = (await response.json()) as { data: Paginated<AnimeSummary> };
-        setResults(payload.data.items);
+        setResults((payload.data?.items ?? []).slice(0, 6));
         setOpen(true);
         setActiveIndex(-1);
       } catch {
@@ -138,7 +137,7 @@ export function SearchBox({ autoFocus = false, initialQuery = "", className = ""
         <div
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-xl border border-white/10 bg-ink-850/98 shadow-2xl backdrop-blur-md"
+          className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(26rem,calc(100vh-10rem))] overflow-y-auto rounded-xl border border-white/10 bg-ink-850/98 shadow-2xl backdrop-blur-md"
         >
           {results.length === 0 && !loading && (
             <p className="px-4 py-4 text-sm text-white/50">Tidak ada hasil untuk “{query.trim()}”.</p>

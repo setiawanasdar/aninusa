@@ -10,7 +10,7 @@ import {
   parseJson,
   requireApiUser,
 } from "@/lib/api";
-import { getFavorites } from "@/lib/catalog";
+import { getAnimeBySlug, getFavorites } from "@/lib/catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,11 +32,36 @@ export async function POST(request: Request) {
     const user = await requireApiUser();
     const input = await parseJson(request, favoriteSchema);
 
-    const anime = await prisma.anime.findUnique({
-      where: { id: input.animeId },
+    let anime = await prisma.anime.findFirst({
+      where: { OR: [{ id: input.animeId }, { slug: input.animeId }] },
       select: { id: true },
     });
-    if (!anime) throw errors.notFound("Anime tidak ditemukan");
+
+    if (!anime) {
+      const details = await getAnimeBySlug(input.animeId);
+      if (!details) throw errors.notFound("Anime tidak ditemukan");
+
+      anime = await prisma.anime.upsert({
+        where: { slug: details.slug },
+        update: {
+          title: details.title,
+          poster: details.poster,
+          banner: details.banner,
+          score: details.score,
+          year: details.year,
+        },
+        create: {
+          id: details.id || details.slug,
+          slug: details.slug,
+          title: details.title,
+          poster: details.poster,
+          banner: details.banner,
+          score: details.score,
+          year: details.year,
+        },
+        select: { id: true },
+      });
+    }
 
     const favorite = await prisma.favorite.upsert({
       where: { userId_animeId: { userId: user.id, animeId: anime.id } },

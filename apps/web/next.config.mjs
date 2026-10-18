@@ -17,9 +17,16 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "s4.anilist.co" },
       { protocol: "https", hostname: "img.anili.st" },
+      { protocol: "https", hostname: "*.anilist.co" },
       { protocol: "https", hostname: "cdn.myanimelist.net" },
       { protocol: "https", hostname: "cdn.anipixcdn.co" },
       { protocol: "https", hostname: "*.anipixcdn.co" },
+      { protocol: "https", hostname: "image.tmdb.org" },
+      { protocol: "https", hostname: "media.themoviedb.org" },
+      { protocol: "https", hostname: "*.themoviedb.org" },
+      { protocol: "https", hostname: "*.tmdb.org" },
+      { protocol: "https", hostname: "artworks.thetvdb.com" },
+      { protocol: "https", hostname: "*.fanart.tv" },
     ],
     minimumCacheTTL: 86_400,
     // Posters/banners in this project are first-party SVGs. Next requires this

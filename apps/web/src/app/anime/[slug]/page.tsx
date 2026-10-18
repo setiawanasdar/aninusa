@@ -183,7 +183,7 @@ export default async function AnimeDetailPage({ params }: AnimePageProps) {
                 </Link>
                 <FavoriteButton
                   animeId={anime.id}
-                  initialFavorited={favoriteIds.includes(anime.id)}
+                  initialFavorited={favoriteIds.includes(anime.id) || favoriteIds.includes(anime.slug)}
                   authenticated={Boolean(user)}
                 />
               </div>

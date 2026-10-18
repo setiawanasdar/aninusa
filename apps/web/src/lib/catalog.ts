@@ -110,12 +110,18 @@ function parseYear(premiered?: string, aired?: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-function parseSeason(premiered?: string): Season | null {
-  const norm = (premiered ?? "").toUpperCase();
+function parseSeason(premiered?: string, aired?: string): Season | null {
+  const norm = `${premiered ?? ""} ${aired ?? ""}`.toUpperCase();
   if (norm.includes("WINTER")) return "WINTER";
   if (norm.includes("SPRING")) return "SPRING";
   if (norm.includes("SUMMER")) return "SUMMER";
   if (norm.includes("FALL") || norm.includes("AUTUMN")) return "FALL";
+
+  if (/JAN|FEB|MAR|\b0[1-3]\b/.test(norm)) return "WINTER";
+  if (/APR|MAY|JUN|\b0[4-6]\b/.test(norm)) return "SPRING";
+  if (/JUL|AUG|SEP\s*([1-9]|1[0-9]|20)\b|\b0[7-8]\b/.test(norm)) return "SUMMER";
+  if (/OCT|NOV|DEC|SEP\s*(2[1-9]|30)\b|\b(10|11|12)\b/.test(norm)) return "FALL";
+
   return null;
 }
 
@@ -165,18 +171,24 @@ function mapAniKotoItemToSummary(item: any): AnimeSummary {
       ? item.genres.split(",").map((g: string) => g.trim()).filter(Boolean)
       : [];
 
+  const rawPoster = typeof item.poster === "string" ? item.poster.trim() : "";
+  const poster = rawPoster.startsWith("http") ? rawPoster : null;
+
+  const rawBg = typeof item.backgroundImage === "string" ? item.backgroundImage.trim() : "";
+  const banner = rawBg.startsWith("http") ? rawBg : poster;
+
   return {
     id: slug,
     slug,
     title: item.title || "Anime",
     englishTitle: item.title || null,
     japaneseTitle: item.japaneseTitle || null,
-    poster: item.poster || null,
-    banner: item.backgroundImage || item.poster || null,
+    poster,
+    banner,
     type: mapType(item.type),
     status: mapStatus(item.status),
     year: item.year || parseYear(item.premiered, item.aired),
-    season: parseSeason(item.premiered),
+    season: parseSeason(item.premiered, item.aired),
     score,
     popularity: 100,
     totalEpisodes,
@@ -260,9 +272,16 @@ export async function getHomeSections(): Promise<HomeSections> {
       try {
         const info = await getAnimeBySlug(candidate.slug);
         if (info) {
+          const rawInfoBanner = typeof info.banner === "string" ? info.banner.trim() : "";
+          const validBanner = rawInfoBanner.startsWith("http")
+            ? rawInfoBanner
+            : candidate.banner && candidate.banner.startsWith("http")
+              ? candidate.banner
+              : candidate.poster;
+
           return {
             ...candidate,
-            banner: info.banner || candidate.banner,
+            banner: validBanner,
             score: info.score ?? candidate.score,
             genres: info.genres.length ? info.genres : candidate.genres,
             synopsis: info.synopsis || null,
@@ -344,6 +363,46 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
       );
       items = extractList(res).map(mapAniKotoItemToSummary);
       total = extractTotal(res, items.length);
+    } else if (query.season) {
+      const targetSeason = query.season.toUpperCase() as Season;
+      const targetYear = query.year ?? new Date().getFullYear();
+      const seasonCacheKey = `catalog:season:${targetYear}:${targetSeason}:p${page}:l${perPage}`;
+      const hitSeason = await cache().get<Paginated<AnimeSummary>>(seasonCacheKey);
+      if (hitSeason) return hitSeason;
+
+      const [resPage1, resPage2] = await Promise.all([
+        fetchAniKoto<any>(`/filter?year=${targetYear}&page=${page}`),
+        fetchAniKoto<any>(`/filter?year=${targetYear}&page=${page + 1}`),
+      ]);
+
+      const pool = [
+        ...extractList(resPage1).map(mapAniKotoItemToSummary),
+        ...extractList(resPage2).map(mapAniKotoItemToSummary),
+      ];
+
+      const resolved = await Promise.all(
+        pool.map(async (item) => {
+          if (item.season) return item;
+          try {
+            const info = await getAnimeBySlug(item.slug);
+            if (info?.season) return { ...item, season: info.season };
+          } catch {
+            /* ignore */
+          }
+          return item;
+        }),
+      );
+
+      const matching = resolved.filter((item) => item.season === targetSeason);
+      const unique = Array.from(new Map(matching.map((m) => [m.slug, m])).values());
+
+      items = unique.slice(0, perPage);
+      total = Math.max(items.length, unique.length);
+
+      const result = buildPagination(items, page, perPage, total);
+      await cache().set(seasonCacheKey, result, CACHE_TTL.catalog);
+      await cache().set(cacheKey, result, CACHE_TTL.catalog);
+      return result;
     } else if (query.genre || query.year || query.status || query.type) {
       if (query.genre && !query.year && !query.status && !query.type) {
         const genreSlug = query.genre.trim().toLowerCase();
@@ -397,7 +456,8 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
       }
     }
 
-    const result = buildPagination(items, page, perPage, Math.max(total, items.length));
+    const sliced = items.length > perPage ? items.slice(0, perPage) : items;
+    const result = buildPagination(sliced, page, perPage, Math.max(total, items.length));
     await cache().set(cacheKey, result, CACHE_TTL.catalog);
     return result;
   });
@@ -922,10 +982,15 @@ export async function getFavoriteIds(userId: string): Promise<string[]> {
   try {
     const rows = await prisma.favorite.findMany({
       where: { userId },
-      select: { animeId: true },
+      select: { animeId: true, anime: { select: { slug: true } } },
       orderBy: { createdAt: "desc" },
     });
-    return rows.map((row) => row.animeId);
+    const ids = new Set<string>();
+    for (const row of rows) {
+      if (row.animeId) ids.add(row.animeId);
+      if (row.anime?.slug) ids.add(row.anime.slug);
+    }
+    return Array.from(ids);
   } catch {
     return [];
   }

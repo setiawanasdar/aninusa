@@ -33,7 +33,7 @@ export default async function ProfilePage() {
             <p className="text-sm text-white/45">{user.email}</p>
             <p className="mt-1 flex items-center gap-1.5 text-[11px] text-white/35">
               <Shield className="h-3 w-3" aria-hidden="true" />
-              {user.role} ?? Akun aktif
+              {user.role} · Akun aktif
             </p>
           </div>
         </div>
@@ -66,7 +66,7 @@ export default async function ProfilePage() {
           <div className="surface px-6 py-10 text-center">
             <p className="text-sm font-medium text-white">Belum ada anime favorit.</p>
             <p className="mt-1 text-xs text-white/45">
-              Tekan ???Tambah ke favorit??? pada halaman anime untuk menyimpannya di sini.
+              Tekan “Tambah ke favorit” pada halaman anime untuk menyimpannya di sini.
             </p>
           </div>
         ) : (

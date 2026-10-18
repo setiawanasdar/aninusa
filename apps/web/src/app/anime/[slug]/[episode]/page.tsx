@@ -113,7 +113,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
         animeScore={anime.score}
         animeYear={anime.year}
         authenticated={Boolean(user)}
-        favorited={favoriteIds.includes(anime.id)}
+        favorited={favoriteIds.includes(anime.id) || favoriteIds.includes(anime.slug)}
         initialProgress={initialProgress}
       />
     </>

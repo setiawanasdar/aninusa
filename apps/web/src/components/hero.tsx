@@ -40,18 +40,27 @@ export function Hero({ anime }: HeroProps) {
           }`}
           aria-hidden={index !== active}
         >
-          {item.banner || item.poster ? (
-            <Image
-              src={(item.banner || item.poster)!}
-              alt=""
-              fill
-              priority={index === 0}
-              sizes="100vw"
-              className="object-cover object-[center_25%]"
-            />
-          ) : (
-            <div className="h-full w-full bg-ink-850" />
-          )}
+          {(() => {
+            const raw = item.banner || item.poster;
+            const valid = typeof raw === "string" && raw.startsWith("http") ? raw : null;
+            return valid ? (
+              <Image
+                src={valid}
+                alt=""
+                fill
+                priority={index === 0}
+                sizes="100vw"
+                className="object-cover object-[center_25%]"
+                unoptimized={
+                  !valid.includes("anipixcdn.co") &&
+                  !valid.includes("anilist.co") &&
+                  !valid.includes("myanimelist.net")
+                }
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-ink-800 via-ink-850 to-ink-900" />
+            );
+          })()}
         </div>
       ))}
 
