@@ -162,7 +162,14 @@ export function SearchBox({ autoFocus = false, initialQuery = "", className = ""
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-white">{anime.title}</span>
                 <span className="block truncate text-xs text-white/45">
-                  {[anime.type, anime.year, anime.status].filter(Boolean).join(" · ")}
+                  {[
+                    anime.source?.toLowerCase().includes("sub indo") ? "🇮🇩 Sub Indo" : null,
+                    anime.type,
+                    anime.year,
+                    anime.status,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </span>
               {anime.score !== null && (

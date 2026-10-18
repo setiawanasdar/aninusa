@@ -27,6 +27,13 @@ const nextConfig = {
       { protocol: "https", hostname: "*.tmdb.org" },
       { protocol: "https", hostname: "artworks.thetvdb.com" },
       { protocol: "https", hostname: "*.fanart.tv" },
+      { protocol: "https", hostname: "*.wp.com" },
+      { protocol: "https", hostname: "i0.wp.com" },
+      { protocol: "https", hostname: "i1.wp.com" },
+      { protocol: "https", hostname: "i2.wp.com" },
+      { protocol: "https", hostname: "i3.wp.com" },
+      { protocol: "https", hostname: "animasu.love" },
+      { protocol: "https", hostname: "*.animasu.love" },
     ],
     minimumCacheTTL: 86_400,
     // Posters/banners in this project are first-party SVGs. Next requires this

@@ -19,6 +19,13 @@ import type {
 } from "@aninusa/types";
 import { buildPagination, pageToSkip } from "@aninusa/utils";
 import { CACHE_KEYS, CACHE_TTL, cache } from "./cache";
+import {
+  getAnimasuAnime,
+  getAnimasuEpisodes,
+  getAnimasuLatest,
+  getAnimasuPlaybackSources,
+  searchAnimasu,
+} from "./animasu";
 
 export interface AnimeAvailability {
   qualities: number[];
@@ -212,6 +219,7 @@ export interface HomeSections {
   seasonal: AnimeSummary[];
   completed: AnimeSummary[];
   topRated: AnimeSummary[];
+  subIndoLatest: AnimeSummary[];
   genres: GenreDto[];
   seasonLabel: { year: number; season: Season } | null;
 }
@@ -222,12 +230,13 @@ export async function getHomeSections(): Promise<HomeSections> {
 
   const { year, season } = currentSeason();
 
-  const [homeRes, popularRes, latestRes, newReleaseRes, completedRes] = await Promise.all([
+  const [homeRes, popularRes, latestRes, newReleaseRes, completedRes, subIndoLatest] = await Promise.all([
     fetchAniKoto<any>(""),
     fetchAniKoto<any>("/most-popular?page=1"),
     fetchAniKoto<any>("/latest-updated?page=1"),
     fetchAniKoto<any>("/new-release?page=1"),
     fetchAniKoto<any>("/filter?status=finished-airing&page=1"),
+    getAnimasuLatest(1).catch(() => [] as AnimeSummary[]),
   ]);
 
   const trendingRaw = Array.isArray(homeRes?.results?.trending) ? homeRes.results.trending : [];
@@ -338,6 +347,7 @@ export async function getHomeSections(): Promise<HomeSections> {
     seasonal,
     completed,
     topRated,
+    subIndoLatest,
     genres,
     seasonLabel: { year, season },
   };
@@ -358,11 +368,25 @@ export async function listAnime(query: CatalogQuery): Promise<Paginated<AnimeSum
     let total = 0;
 
     if (query.q && query.q.trim()) {
-      const res = await fetchAniKoto<any>(
-        `/search?keyword=${encodeURIComponent(query.q.trim())}&page=${page}`,
-      );
-      items = extractList(res).map(mapAniKotoItemToSummary);
-      total = extractTotal(res, items.length);
+      const q = query.q.trim();
+      const [resAniKoto, animasuResults] = await Promise.all([
+        fetchAniKoto<any>(`/search?keyword=${encodeURIComponent(q)}&page=${page}`),
+        page === 1 ? searchAnimasu(q).catch(() => [] as AnimeSummary[]) : Promise.resolve([] as AnimeSummary[]),
+      ]);
+      const aniKotoList = extractList(resAniKoto).map(mapAniKotoItemToSummary);
+
+      const seenSlugs = new Set<string>();
+      const combined: AnimeSummary[] = [];
+
+      for (const item of [...animasuResults, ...aniKotoList]) {
+        if (!seenSlugs.has(item.slug)) {
+          seenSlugs.add(item.slug);
+          combined.push(item);
+        }
+      }
+
+      items = combined;
+      total = extractTotal(resAniKoto, items.length) + animasuResults.length;
     } else if (query.season) {
       const targetSeason = query.season.toUpperCase() as Season;
       const targetYear = query.year ?? new Date().getFullYear();
@@ -486,7 +510,14 @@ export const getAnimeBySlug = reactCache(async (slug: string): Promise<AnimeDeta
     }
   }
 
-  if (!info || !info.title) return null;
+  if (!info || !info.title) {
+    const animasuDetail = await getAnimasuAnime(targetSlug);
+    if (animasuDetail) {
+      await cache().set(cacheKey, animasuDetail, CACHE_TTL.anime);
+      return animasuDetail;
+    }
+    return null;
+  }
 
   const totalEp =
     typeof info.episodes === "number"
@@ -521,75 +552,88 @@ export async function getAnimeEpisodes(animeIdOrSlug: string): Promise<EpisodeDt
   const hit = await cache().get<EpisodeDto[]>(cacheKey);
   if (hit) return hit;
 
-  const infoRes = await fetchAniKoto<any>(`/info?id=${encodeURIComponent(targetSlug)}`);
-  const animeId = infoRes?.results?.animeId ? String(infoRes.results.animeId) : targetSlug;
-  const poster = infoRes?.results?.poster || null;
-  const animeTitle = infoRes?.results?.title || "Anime";
-
-  const epRes = await fetchAniKoto<any>(`/episodes/${encodeURIComponent(animeId)}`);
-  const rawList = Array.isArray(epRes?.results?.episodes)
-    ? epRes.results.episodes
-    : Array.isArray(epRes?.results)
-      ? epRes.results
-      : [];
-
   let episodes: EpisodeDto[] = [];
+  try {
+    const infoRes = await fetchAniKoto<any>(`/info?id=${encodeURIComponent(targetSlug)}`);
+    const animeId = infoRes?.results?.animeId ? String(infoRes.results.animeId) : targetSlug;
+    const poster = infoRes?.results?.poster || null;
+    const animeTitle = infoRes?.results?.title || "Anime";
 
-  if (rawList.length > 0) {
-    episodes = rawList.map((ep: any) => {
-      const epNum =
-        typeof ep.episode_no === "number"
-          ? ep.episode_no
-          : parseInt(String(ep.episode_no || "1"), 10) || 1;
-      const epId = String(ep.id || `${targetSlug}-${epNum}`);
+    if (infoRes?.results?.title) {
+      const epRes = await fetchAniKoto<any>(`/episodes/${encodeURIComponent(animeId)}`);
+      const rawList = Array.isArray(epRes?.results?.episodes)
+        ? epRes.results.episodes
+        : Array.isArray(epRes?.results)
+          ? epRes.results
+          : [];
 
-      const meta: StoredEpisodeMeta = {
-        animeSlug: targetSlug,
-        animeTitle,
-        animePoster: poster,
-        episodeNumber: epNum,
-        serverIds: ep.server_ids,
-        epId,
-      };
-      episodeMetaStore.set(epId, meta);
-      episodeMetaStore.set(`${targetSlug}:${epNum}`, meta);
+      if (rawList.length > 0) {
+        episodes = rawList.map((ep: any) => {
+          const epNum =
+            typeof ep.episode_no === "number"
+              ? ep.episode_no
+              : parseInt(String(ep.episode_no || "1"), 10) || 1;
+          const epId = String(ep.id || `${targetSlug}-${epNum}`);
 
-      return {
-        id: `${targetSlug}:${epNum}`,
-        animeId: targetSlug,
-        number: epNum,
-        title: ep.title?.trim() || `Episode ${epNum}`,
-        description: null,
-        duration: 24,
-        thumbnail: poster,
-        airDate: null,
-        introStart: null,
-        introEnd: null,
-        outroStart: null,
-      };
-    });
-  } else {
-    const count =
-      typeof infoRes?.results?.episodes === "number"
-        ? infoRes.results.episodes
-        : parseInt(String(infoRes?.results?.episodes || "0"), 10) || 1;
+          const meta: StoredEpisodeMeta = {
+            animeSlug: targetSlug,
+            animeTitle,
+            animePoster: poster,
+            episodeNumber: epNum,
+            serverIds: ep.server_ids,
+            epId,
+          };
+          episodeMetaStore.set(epId, meta);
+          episodeMetaStore.set(`${targetSlug}:${epNum}`, meta);
 
-    episodes = Array.from({ length: count }, (_, i) => {
-      const epNum = i + 1;
-      return {
-        id: `${targetSlug}:${epNum}`,
-        animeId: targetSlug,
-        number: epNum,
-        title: `Episode ${epNum}`,
-        description: null,
-        duration: 24,
-        thumbnail: poster,
-        airDate: null,
-        introStart: null,
-        introEnd: null,
-        outroStart: null,
-      };
-    });
+          return {
+            id: `${targetSlug}:${epNum}`,
+            animeId: targetSlug,
+            number: epNum,
+            title: ep.title?.trim() || `Episode ${epNum}`,
+            description: null,
+            duration: 24,
+            thumbnail: poster,
+            airDate: null,
+            introStart: null,
+            introEnd: null,
+            outroStart: null,
+          };
+        });
+      } else {
+        const count =
+          typeof infoRes?.results?.episodes === "number"
+            ? infoRes.results.episodes
+            : parseInt(String(infoRes?.results?.episodes || "0"), 10) || 1;
+
+        episodes = Array.from({ length: count }, (_, i) => {
+          const epNum = i + 1;
+          return {
+            id: `${targetSlug}:${epNum}`,
+            animeId: targetSlug,
+            number: epNum,
+            title: `Episode ${epNum}`,
+            description: null,
+            duration: 24,
+            thumbnail: poster,
+            airDate: null,
+            introStart: null,
+            introEnd: null,
+            outroStart: null,
+          };
+        });
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Fallback to Animasu if AniKoto returned no episodes
+  if (episodes.length === 0) {
+    const animasuEps = await getAnimasuEpisodes(targetSlug);
+    if (animasuEps.length > 0) {
+      episodes = animasuEps;
+    }
   }
 
   await cache().set(cacheKey, episodes, CACHE_TTL.playback);
@@ -668,6 +712,8 @@ export async function getEpisodePlayback(
     }
   }
 
+  const anime = await getAnimeBySlug(animeSlug);
+
   const sources: PlaybackSource[] = [];
   let introStart: number | null = null;
   let introEnd: number | null = null;
@@ -690,7 +736,7 @@ export async function getEpisodePlayback(
               codec: null,
               language: srv.type === "dub" ? "en" : "ja",
               url: streamUrl,
-              label: srv.name || "HD",
+              label: srv.name ? `${srv.name} (Sub Eng)` : "Server HD (Sub Eng)",
               status: "ACTIVE",
             });
 
@@ -711,6 +757,22 @@ export async function getEpisodePlayback(
     }
   }
 
+  // Resolve Sub Indo stream servers from Animasu API
+  try {
+    const animasuSources = await getAnimasuPlaybackSources({
+      animeSlug,
+      animeTitle: anime?.title || currentStored?.animeTitle,
+      altTitles: anime?.alternativeTitles,
+      episodeNumber: epNumber,
+    });
+    if (animasuSources.length > 0) {
+      // Put Sub Indo sources first for Indonesian audience
+      sources.unshift(...animasuSources);
+    }
+  } catch (err) {
+    console.error("Failed to resolve Animasu Sub Indo servers:", err);
+  }
+
   if (sources.length === 0) {
     sources.push({
       id: `${animeSlug}-${epNumber}`,
@@ -723,8 +785,6 @@ export async function getEpisodePlayback(
       status: "ACTIVE",
     });
   }
-
-  const anime = await getAnimeBySlug(animeSlug);
   const currentIndex = episodes.findIndex((e) => e.number === currentEp.number);
 
   const rawSubtitles: SubtitleTrack[] = [];

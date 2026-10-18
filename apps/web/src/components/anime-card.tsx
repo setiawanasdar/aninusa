@@ -64,6 +64,12 @@ export function AnimeCard({ anime, priority = false, size = "default", showProgr
             </span>
           )}
 
+          {anime.source?.toLowerCase().includes("sub indo") && (
+            <span className="absolute left-2 bottom-2 rounded bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow backdrop-blur-sm">
+              Sub Indo
+            </span>
+          )}
+
           <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/card:opacity-100">
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/95 shadow-lg">
               <Play className="ml-0.5 h-5 w-5 fill-white text-white" aria-hidden="true" />

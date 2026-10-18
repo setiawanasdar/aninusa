@@ -45,6 +45,7 @@ export interface AnimeSummary {
   genres: string[];
   studios: string[];
   updatedAt: string;
+  source?: string | null;
 }
 
 export interface AnimeDetail extends AnimeSummary {

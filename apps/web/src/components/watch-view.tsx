@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, ListVideo, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListVideo, Server, Star } from "lucide-react";
 import { VideoPlayer } from "@aninusa/player";
 import type { AnimeSummary, EpisodeDto, EpisodePlayback } from "@aninusa/types";
 import { formatEpisodeNumber } from "@aninusa/utils";
@@ -40,8 +40,21 @@ export function WatchView({
   const [theater, setTheater] = useState(false);
   const [startAt, setStartAt] = useState(initialProgress);
   const [savedLocally, setSavedLocally] = useState(false);
+  const [activeSourceIndex, setActiveSourceIndex] = useState(0);
 
   const { anime, episode, sources, subtitles, previousEpisode, nextEpisode } = playback;
+
+  useEffect(() => {
+    setActiveSourceIndex(0);
+  }, [episode.id]);
+
+  const activeSources = useMemo(() => {
+    if (!sources || sources.length === 0) return [];
+    if (activeSourceIndex === 0) return sources;
+    const active = sources[activeSourceIndex];
+    if (!active) return sources;
+    return [active, ...sources.filter((_, i) => i !== activeSourceIndex)];
+  }, [sources, activeSourceIndex]);
 
   useEffect(() => {
     if (initialProgress > 0) {
@@ -112,7 +125,7 @@ export function WatchView({
         <div className="min-w-0 space-y-4">
           <div className={theater ? "" : "overflow-hidden rounded-xl"}>
             <VideoPlayer
-              sources={sources}
+              sources={activeSources}
               subtitles={subtitles}
               poster={episode.thumbnail ?? anime.poster}
               animeTitle={anime.title}
@@ -137,6 +150,36 @@ export function WatchView({
               onProgress={saveProgress}
             />
           </div>
+
+          {sources.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#16161c] px-3.5 py-2.5 shadow-sm">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
+                <Server className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+                <span>Pilih Server:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {sources.map((src, index) => {
+                  const isCurrent = index === activeSourceIndex;
+                  const isSubIndo = src.language === "id" || src.label.toLowerCase().includes("sub indo");
+                  return (
+                    <button
+                      key={src.id || index}
+                      type="button"
+                      onClick={() => setActiveSourceIndex(index)}
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
+                        isCurrent
+                          ? "bg-accent text-white shadow-sm ring-1 ring-white/20 font-bold"
+                          : "bg-white/5 text-white/75 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span className="text-[11px]">{isSubIndo ? "🇮🇩" : "🌐"}</span>
+                      <span>{src.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-3">
             <Link

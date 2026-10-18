@@ -68,6 +68,14 @@ export default async function HomePage() {
 
         <LatestEpisodes items={sections.latestEpisodes} />
 
+        {sections.subIndoLatest && sections.subIndoLatest.length > 0 && (
+          <AnimeRail
+            title="Update Terbaru Sub Indo"
+            subtitle="Anime episode terbaru dengan subtitle Indonesia dari Animasu"
+            anime={sections.subIndoLatest}
+          />
+        )}
+
         <AnimeRail title="Trending sekarang" anime={sections.trending} href="/browse?sort=updated" />
 
         <AnimeRail
