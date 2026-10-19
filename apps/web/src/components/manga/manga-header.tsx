@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Flame, History, Search, Tv, X } from "lucide-react";
+import { BookOpen, Flame, History, Layers, Search, X } from "lucide-react";
+import { ModeSwitcher } from "@/components/mode-switcher";
 
 export function MangaHeader() {
   const pathname = usePathname();
@@ -21,16 +22,17 @@ export function MangaHeader() {
   };
 
   const navLinks = [
-    { href: "/manga", label: "Beranda Komik", icon: BookOpen },
+    { href: "/manga", label: "Beranda", icon: BookOpen },
     { href: "/manga?tab=popular", label: "Populer", icon: Flame },
     { href: "/manga?tab=latest", label: "Terbaru", icon: History },
+    { href: "/manga/genre", label: "Genre", icon: Layers },
   ];
 
   return (
-    <header className="border-b border-white/[0.08] bg-ink-950/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-ink-950/95 backdrop-blur-md">
       <div className="container-page flex h-14 items-center justify-between gap-4">
-        {/* Left: Brand Badge & Sub-navigation */}
-        <div className="flex items-center gap-6">
+        {/* Left: Brand Badge, Mode Switcher & Sub-navigation */}
+        <div className="flex items-center gap-4">
           <Link
             href="/manga"
             className="flex items-center gap-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
@@ -48,9 +50,18 @@ export function MangaHeader() {
             </div>
           </Link>
 
+          <div className="hidden sm:block">
+            <ModeSwitcher />
+          </div>
+
           <nav className="hidden md:flex items-center gap-1" aria-label="Manga navigation">
             {navLinks.map((item) => {
-              const active = pathname === item.href;
+              const active =
+                item.href === "/manga"
+                  ? pathname === "/manga"
+                  : pathname.startsWith(item.href.split("?")[0]) && item.href.includes("?")
+                    ? false
+                    : pathname === item.href.split("?")[0];
               const Icon = item.icon;
               return (
                 <Link
@@ -70,7 +81,7 @@ export function MangaHeader() {
           </nav>
         </div>
 
-        {/* Right: Manga Search & Return to Anime */}
+        {/* Right: Manga Search */}
         <div className="flex items-center gap-2">
           {/* Desktop Search */}
           <form onSubmit={handleSearch} className="relative hidden sm:block w-56 md:w-64">
@@ -94,14 +105,10 @@ export function MangaHeader() {
             {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
           </button>
 
-          {/* Back to Anime Button */}
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-ink-900 px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:border-white/20 hover:bg-ink-800 hover:text-white"
-          >
-            <Tv className="h-3.5 w-3.5 text-accent" />
-            <span className="hidden sm:inline">Nonton Anime</span>
-          </Link>
+          {/* Mobile Mode Switcher */}
+          <div className="sm:hidden">
+            <ModeSwitcher />
+          </div>
         </div>
       </div>
 
@@ -121,6 +128,24 @@ export function MangaHeader() {
           </form>
         </div>
       )}
+
+      {/* Mobile Nav Links */}
+      <div className="flex md:hidden items-center gap-1 overflow-x-auto px-4 pb-2 pt-1 scrollbar-none">
+        {navLinks.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white/60 hover:bg-white/[0.05] hover:text-white"
+            >
+              <Icon className="h-3 w-3" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
     </header>
   );
 }
+

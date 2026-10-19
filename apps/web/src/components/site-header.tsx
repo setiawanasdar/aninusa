@@ -15,13 +15,13 @@ import {
 } from "lucide-react";
 import type { UserDto } from "@aninusa/types";
 import { SearchBox } from "./search-box";
+import { ModeSwitcher } from "./mode-switcher";
 
 const NAV_ITEMS = [
   { href: "/", label: "Beranda" },
   { href: "/browse", label: "Jelajah" },
   { href: "/season", label: "Musim" },
   { href: "/genre", label: "Genre" },
-  { href: "/manga", label: "Manga & Komik" },
 ];
 
 interface SiteHeaderProps {
@@ -79,6 +79,8 @@ export function SiteHeader({ user }: SiteHeaderProps) {
             Ani<span className="text-accent">Nusa</span>
           </span>
         </Link>
+
+        <ModeSwitcher />
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Navigasi utama">
           {NAV_ITEMS.map((item) => {

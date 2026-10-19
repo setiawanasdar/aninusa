@@ -370,3 +370,111 @@ export async function getMangaHomeSections(): Promise<MangaHomeData> {
   await cache().set(cacheKey, data, CACHE_TTL.mangaHome);
   return data;
 }
+
+/**
+ * Common manga/manhwa/manhua genres for the genre browser.
+ */
+export const MANGA_GENRES = [
+  { name: "Action", slug: "action" },
+  { name: "Adventure", slug: "adventure" },
+  { name: "Comedy", slug: "comedy" },
+  { name: "Drama", slug: "drama" },
+  { name: "Fantasy", slug: "fantasy" },
+  { name: "Horror", slug: "horror" },
+  { name: "Isekai", slug: "isekai" },
+  { name: "Martial Arts", slug: "martial-arts" },
+  { name: "Mecha", slug: "mecha" },
+  { name: "Mystery", slug: "mystery" },
+  { name: "Psychological", slug: "psychological" },
+  { name: "Romance", slug: "romance" },
+  { name: "School Life", slug: "school-life" },
+  { name: "Sci-Fi", slug: "sci-fi" },
+  { name: "Seinen", slug: "seinen" },
+  { name: "Shoujo", slug: "shoujo" },
+  { name: "Shounen", slug: "shounen" },
+  { name: "Slice of Life", slug: "slice-of-life" },
+  { name: "Sports", slug: "sports" },
+  { name: "Supernatural", slug: "supernatural" },
+  { name: "Thriller", slug: "thriller" },
+  { name: "Tragedy", slug: "tragedy" },
+] as const;
+
+export type MangaGenre = (typeof MANGA_GENRES)[number];
+
+/**
+ * Returns the full list of manga genres.
+ */
+export function getMangaGenres(): readonly MangaGenre[] {
+  return MANGA_GENRES;
+}
+
+/**
+ * Fetch manga filtered by genre. Uses the Komiku search endpoint with
+ * the genre name as keyword since there is no dedicated genre API.
+ */
+export async function getMangaByGenre(
+  genre: string,
+  page = 1,
+): Promise<{
+  items: MangaSummary[];
+  genre: string;
+  page: number;
+  total: number;
+  hasNextPage: boolean;
+}> {
+  const genreEntry = MANGA_GENRES.find((g) => g.slug === genre);
+  const keyword = genreEntry ? genreEntry.name : genre;
+
+  const safePage = Math.max(1, page);
+  const cacheKey = CACHE_KEYS.mangaGenreSearch(genre, safePage);
+  const hit = await cache().get<{
+    items: MangaSummary[];
+    genre: string;
+    page: number;
+    total: number;
+    hasNextPage: boolean;
+  }>(cacheKey);
+  if (hit) return hit;
+
+  const res = await fetchKomiku<{
+    success: boolean;
+    count: number;
+    results: any[];
+  }>(`/api/search?keyword=${encodeURIComponent(keyword)}&page=${safePage}`);
+
+  const rawList = Array.isArray(res?.results) ? res.results : [];
+  const items: MangaSummary[] = rawList.map((item: any) => ({
+    title: item.title || keyword,
+    altTitle: item.altTitle || undefined,
+    slug: cleanComicSlug(item.slug || ""),
+    type: item.type || "Manga",
+    thumbnail: item.thumbnail || "",
+    description: item.description || undefined,
+    firstChapter: item.firstChapter
+      ? {
+          title: item.firstChapter.title || "",
+          chapterSlug: cleanComicSlug(item.firstChapter.chapterSlug || ""),
+          url: item.firstChapter.url,
+        }
+      : undefined,
+    latestChapter: item.latestChapter
+      ? {
+          title: (item.latestChapter.title || "").replace(/Terbaru:\s*/i, "").trim(),
+          chapterSlug: cleanComicSlug(item.latestChapter.chapterSlug || ""),
+          url: item.latestChapter.url,
+        }
+      : undefined,
+    url: item.url,
+  }));
+
+  const result = {
+    items,
+    genre,
+    page: safePage,
+    total: items.length,
+    hasNextPage: items.length >= 10,
+  };
+
+  await cache().set(cacheKey, result, CACHE_TTL.mangaList);
+  return result;
+}

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -63,6 +64,9 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
+  const headerList = await headers();
+  const pathname = headerList.get("x-next-pathname") ?? headerList.get("x-invoke-path") ?? "";
+  const isMangaRoute = pathname.startsWith("/manga");
 
   return (
     <html lang="id" suppressHydrationWarning>
@@ -78,11 +82,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Lewati ke konten utama
         </a>
-        <SiteHeader user={user ? { id: user.id, username: user.username, role: user.role, avatar: user.avatar } : null} />
+        {!isMangaRoute && (
+          <SiteHeader user={user ? { id: user.id, username: user.username, role: user.role, avatar: user.avatar } : null} />
+        )}
         <main id="main-content" className="flex-1">
           {children}
         </main>
-        <SiteFooter />
+        {!isMangaRoute && <SiteFooter />}
       </body>
     </html>
   );

@@ -59,6 +59,7 @@ export const CACHE_KEYS = {
   mangaSearch: (q: string, page: number) => `manga:search:v1:${q}:${page}`,
   mangaDetail: (slug: string) => `manga:detail:v1:${slug}`,
   mangaChapter: (slug: string) => `manga:chapter:v1:${slug}`,
+  mangaGenreSearch: (genre: string, page: number) => `manga:genre:v1:${genre}:${page}`,
 } as const;
 
 export const CACHE_TTL = {
