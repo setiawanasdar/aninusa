@@ -23,6 +23,7 @@ export function SiteFooter() {
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">Jelajahi</h2>
           <ul className="space-y-2 text-sm text-white/60">
             <li><Link href="/browse" className="hover:text-white">Semua anime</Link></li>
+            <li><Link href="/manga" className="hover:text-white">Manga &amp; Komik</Link></li>
             <li><Link href="/season" className="hover:text-white">Musim ini</Link></li>
             <li><Link href="/genre" className="hover:text-white">Genre</Link></li>
             <li><Link href="/search" className="hover:text-white">Pencarian</Link></li>

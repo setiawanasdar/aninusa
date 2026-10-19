@@ -34,6 +34,10 @@ const nextConfig = {
       { protocol: "https", hostname: "i3.wp.com" },
       { protocol: "https", hostname: "animasu.love" },
       { protocol: "https", hostname: "*.animasu.love" },
+      { protocol: "https", hostname: "komiku.org" },
+      { protocol: "https", hostname: "*.komiku.org" },
+      { protocol: "https", hostname: "komiku.to" },
+      { protocol: "https", hostname: "*.komiku.to" },
     ],
     minimumCacheTTL: 86_400,
     // Posters/banners in this project are first-party SVGs. Next requires this

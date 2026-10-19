@@ -53,6 +53,12 @@ export const CACHE_KEYS = {
   studios: "catalog:studios:v1",
   seasons: "catalog:seasons:v1",
   sitemap: "catalog:sitemap:v1",
+  mangaHome: "manga:home:v1",
+  mangaLatest: (page: number) => `manga:latest:v1:${page}`,
+  mangaPopular: "manga:popular:v1",
+  mangaSearch: (q: string, page: number) => `manga:search:v1:${q}:${page}`,
+  mangaDetail: (slug: string) => `manga:detail:v1:${slug}`,
+  mangaChapter: (slug: string) => `manga:chapter:v1:${slug}`,
 } as const;
 
 export const CACHE_TTL = {
@@ -62,6 +68,10 @@ export const CACHE_TTL = {
   playback: 1_800,
   taxonomy: 3_600,
   sitemap: 3_600,
+  mangaHome: 300,
+  mangaList: 300,
+  mangaDetail: 900,
+  mangaChapter: 3_600,
 } as const;
 
 export async function invalidateCatalogCache(): Promise<void> {
@@ -69,5 +79,6 @@ export async function invalidateCatalogCache(): Promise<void> {
     cache().deletePrefix("catalog:"),
     cache().deletePrefix("search:"),
     cache().deletePrefix("animasu:"),
+    cache().deletePrefix("manga:"),
   ]);
 }

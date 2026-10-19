@@ -276,3 +276,82 @@ export interface ProviderStatus {
   capabilities: ProviderCapabilities;
   enabled: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Manga / Comic domain models
+// ---------------------------------------------------------------------------
+
+export type ComicType = "Manga" | "Manhwa" | "Manhua" | string;
+
+export interface MangaChapterItem {
+  title: string;
+  chapterSlug: string;
+  url?: string;
+  releaseDate?: string;
+}
+
+export interface MangaSummary {
+  title: string;
+  altTitle?: string;
+  slug: string;
+  type?: ComicType;
+  thumbnail: string;
+  description?: string;
+  genre?: string;
+  views?: string;
+  rank?: number;
+  latestChapter?: {
+    title: string;
+    chapterSlug: string;
+    url?: string;
+  };
+  firstChapter?: {
+    title: string;
+    chapterSlug: string;
+    url?: string;
+  };
+  url?: string;
+}
+
+export interface MangaDetail {
+  title: string;
+  altTitle?: string;
+  slug: string;
+  thumbnail: string;
+  synopsis?: string;
+  metadata?: {
+    type?: ComicType;
+    theme?: string;
+    author?: string;
+    status?: string;
+    rating?: string;
+    readingDirection?: string;
+  };
+  genres: string[];
+  totalChapters: number;
+  chapters: MangaChapterItem[];
+  url?: string;
+}
+
+export interface ChapterImage {
+  page: number;
+  url: string;
+  alt?: string;
+}
+
+export interface ChapterDetail {
+  title: string;
+  chapterSlug: string;
+  comic: {
+    title: string;
+    slug: string;
+    url?: string;
+  };
+  navigation: {
+    prevChapter: string | null;
+    nextChapter: string | null;
+  };
+  totalImages: number;
+  images: ChapterImage[];
+}
+

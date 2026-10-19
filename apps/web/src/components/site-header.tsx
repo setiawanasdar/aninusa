@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/browse", label: "Jelajah" },
   { href: "/season", label: "Musim" },
   { href: "/genre", label: "Genre" },
+  { href: "/manga", label: "Manga & Komik" },
 ];
 
 interface SiteHeaderProps {
