@@ -167,5 +167,20 @@
   .no-scrollbar {
     scrollbar-width: none;
   }
+
+  @keyframes modeEnter {
+    0% {
+      opacity: 0.7;
+      transform: translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-mode-enter {
+    animation: modeEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 }
 

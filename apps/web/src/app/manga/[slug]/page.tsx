@@ -10,7 +10,6 @@ import {
   User,
 } from "lucide-react";
 import { ChapterList } from "@/components/manga/chapter-list";
-import { MangaHeader } from "@/components/manga/manga-header";
 import { getMangaDetail } from "@/lib/manga";
 
 export const dynamic = "force-dynamic";
@@ -57,11 +56,8 @@ export default async function MangaDetailPage({ params }: MangaDetailPageProps) 
   const readingDirection = comic.metadata?.readingDirection || "Kiri ke kanan";
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white">
-      <MangaHeader />
-
-      <main className="container-page py-6 sm:py-8 space-y-8">
-        {/* Breadcrumb */}
+    <div className="container-page py-6 sm:py-8 space-y-8">
+      {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs text-white/50" aria-label="Breadcrumb">
           <Link href="/manga" className="hover:text-accent">
             Manga & Komik
@@ -201,7 +197,6 @@ export default async function MangaDetailPage({ params }: MangaDetailPageProps) 
 
           <ChapterList chapters={comic.chapters} comicSlug={comic.slug} />
         </section>
-      </main>
     </div>
   );
 }

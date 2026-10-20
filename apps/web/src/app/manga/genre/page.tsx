@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, Layers } from "lucide-react";
-import { MangaHeader } from "@/components/manga/manga-header";
 import { MANGA_GENRES } from "@/lib/manga";
 
 export const metadata: Metadata = {
@@ -23,43 +22,39 @@ const GENRE_COLORS = [
 
 export default function MangaGenrePage() {
   return (
-    <div className="min-h-screen bg-[#09090b] text-white">
-      <MangaHeader />
+    <div className="container-page py-6 sm:py-8 space-y-6">
+      <header className="space-y-2">
+        <nav className="flex items-center gap-2 text-xs text-white/50" aria-label="Breadcrumb">
+          <Link href="/manga" className="hover:text-accent">
+            Manga & Komik
+          </Link>
+          <span>/</span>
+          <span className="text-white/80 font-medium">Genre</span>
+        </nav>
 
-      <main className="container-page py-6 sm:py-8 space-y-6">
-        <header className="space-y-2">
-          <nav className="flex items-center gap-2 text-xs text-white/50" aria-label="Breadcrumb">
-            <Link href="/manga" className="hover:text-accent">
-              Manga & Komik
-            </Link>
-            <span>/</span>
-            <span className="text-white/80 font-medium">Genre</span>
-          </nav>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+          <Layers className="h-6 w-6 text-accent" />
+          Genre Manga & Komik
+        </h1>
+        <p className="text-sm text-white/50">
+          Pilih genre favorit Anda untuk menemukan komik yang sesuai.
+        </p>
+      </header>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-            <Layers className="h-6 w-6 text-accent" />
-            Genre Manga & Komik
-          </h1>
-          <p className="text-sm text-white/50">
-            Pilih genre favorit Anda untuk menemukan komik yang sesuai.
-          </p>
-        </header>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {MANGA_GENRES.map((genre, idx) => (
-            <Link
-              key={genre.slug}
-              href={`/manga/genre/${genre.slug}`}
-              className={`group relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 sm:p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-accent/5 ${GENRE_COLORS[idx % GENRE_COLORS.length]}`}
-            >
-              <BookOpen className="absolute -right-2 -top-2 h-16 w-16 text-white/[0.04] transition-transform duration-500 group-hover:scale-110 group-hover:text-white/[0.08]" />
-              <span className="relative text-sm font-bold text-white/90 group-hover:text-white">
-                {genre.name}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </main>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        {MANGA_GENRES.map((genre, idx) => (
+          <Link
+            key={genre.slug}
+            href={`/manga/genre/${genre.slug}`}
+            className={`group relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 sm:p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-accent/5 ${GENRE_COLORS[idx % GENRE_COLORS.length]}`}
+          >
+            <BookOpen className="absolute -right-2 -top-2 h-16 w-16 text-white/[0.04] transition-transform duration-500 group-hover:scale-110 group-hover:text-white/[0.08]" />
+            <span className="relative text-sm font-bold text-white/90 group-hover:text-white">
+              {genre.name}
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

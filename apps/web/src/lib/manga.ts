@@ -338,6 +338,7 @@ export interface MangaHomeData {
   latest: MangaSummary[];
   manhwa: MangaSummary[];
   manga: MangaSummary[];
+  manhua: MangaSummary[];
 }
 
 /**
@@ -348,23 +349,36 @@ export async function getMangaHomeSections(): Promise<MangaHomeData> {
   const hit = await cache().get<MangaHomeData>(cacheKey);
   if (hit) return hit;
 
-  const [popular, latestData] = await Promise.all([
+  const [popular, latestPage1, latestPage2] = await Promise.all([
     getMangaPopular().catch(() => [] as MangaSummary[]),
     getMangaLatest(1).catch(() => ({ items: [] as MangaSummary[], page: 1, count: 0, hasNextPage: false })),
+    getMangaLatest(2).catch(() => ({ items: [] as MangaSummary[], page: 2, count: 0, hasNextPage: false })),
   ]);
 
-  const latest = latestData.items;
+  const latest = [...latestPage1.items, ...latestPage2.items];
+
+  // Create deduplicated pool
+  const itemMap = new Map<string, MangaSummary>();
+  for (const item of [...popular, ...latest]) {
+    if (item.slug && !itemMap.has(item.slug)) {
+      itemMap.set(item.slug, item);
+    }
+  }
+  const allPool = Array.from(itemMap.values());
+
   const featured = popular[0] || latest[0] || null;
 
-  const manhwa = latest.filter((item) => (item.type || "").toLowerCase().includes("manhwa"));
-  const manga = latest.filter((item) => (item.type || "").toLowerCase().includes("manga"));
+  const manhwa = allPool.filter((item) => (item.type || "").toLowerCase().includes("manhwa"));
+  const manga = allPool.filter((item) => (item.type || "").toLowerCase().includes("manga"));
+  const manhua = allPool.filter((item) => (item.type || "").toLowerCase().includes("manhua"));
 
   const data: MangaHomeData = {
     featured,
     popular,
     latest,
-    manhwa: manhwa.length > 0 ? manhwa : latest.slice(0, 6),
-    manga: manga.length > 0 ? manga : popular.slice(0, 6),
+    manhwa: manhwa.length > 0 ? manhwa : popular.slice(0, 10),
+    manga: manga.length > 0 ? manga : popular.slice(0, 10),
+    manhua: manhua.length > 0 ? manhua : latest.slice(0, 10),
   };
 
   await cache().set(cacheKey, data, CACHE_TTL.mangaHome);

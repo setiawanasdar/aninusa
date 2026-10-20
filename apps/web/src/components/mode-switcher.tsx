@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, Tv } from "lucide-react";
 
 const MODES = [
@@ -11,14 +12,43 @@ const MODES = [
 
 export function ModeSwitcher() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const isManga = pathname.startsWith("/manga");
-  const activeIndex = isManga ? 1 : 0;
+  const [activeTab, setActiveTab] = useState<"anime" | "manga">(isManga ? "manga" : "anime");
+
+  // Keep state synchronized with URL changes
+  useEffect(() => {
+    setActiveTab(pathname.startsWith("/manga") ? "manga" : "anime");
+  }, [pathname]);
+
+  // Prefetch both mode targets for instant, zero-delay switching
+  useEffect(() => {
+    router.prefetch("/");
+    router.prefetch("/manga");
+  }, [router]);
+
+  const activeIndex = activeTab === "manga" ? 1 : 0;
+
+  const handleSwitch = (e: React.MouseEvent, href: string, modeId: "anime" | "manga") => {
+    if (activeTab === modeId) return;
+    e.preventDefault();
+    // Immediate visual indicator slide
+    setActiveTab(modeId);
+    startTransition(() => {
+      router.push(href);
+    });
+  };
 
   return (
-    <div className="relative flex items-center rounded-full border border-white/10 bg-ink-900/80 p-0.5">
+    <div
+      className="relative flex items-center rounded-full border border-white/10 bg-ink-900/90 p-0.5 shadow-inner backdrop-blur-md"
+      role="tablist"
+      aria-label="Pilih mode AniNusa"
+    >
       {/* Sliding indicator */}
       <div
-        className="absolute top-0.5 bottom-0.5 rounded-full bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-300 ease-out"
+        className="absolute top-0.5 bottom-0.5 rounded-full bg-accent shadow-md shadow-accent/25 transition-all duration-300 ease-out"
         style={{
           left: `calc(${activeIndex * 50}% + 2px)`,
           width: "calc(50% - 4px)",
@@ -26,20 +56,22 @@ export function ModeSwitcher() {
         aria-hidden="true"
       />
 
-      {MODES.map((mode, idx) => {
+      {MODES.map((mode) => {
         const Icon = mode.icon;
-        const isActive = idx === activeIndex;
+        const isActive = activeTab === mode.id;
         return (
           <Link
             key={mode.id}
             href={mode.href}
-            className={`relative z-10 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors duration-200 ${
-              isActive ? "text-white" : "text-white/50 hover:text-white/75"
+            onClick={(e) => handleSwitch(e, mode.href, mode.id)}
+            role="tab"
+            aria-selected={isActive}
+            className={`relative z-10 flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-1 sm:py-1.5 text-xs font-bold transition-colors duration-200 ${
+              isActive ? "text-white" : "text-white/60 hover:text-white/90"
             }`}
-            aria-current={isActive ? "page" : undefined}
           >
-            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-            {mode.label}
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{mode.label}</span>
           </Link>
         );
       })}
