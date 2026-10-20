@@ -2,24 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { BookOpen, Flame, History, Layers, Search, X } from "lucide-react";
 import { ModeSwitcher } from "@/components/mode-switcher";
+import { MangaSearchBox } from "./manga-search-box";
 
 export function MangaHeader() {
   const pathname = usePathname();
-  const router = useRouter();
-  const [query, setQuery] = useState("");
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = query.trim();
-    if (clean) {
-      router.push(`/manga/search?q=${encodeURIComponent(clean)}`);
-      setMobileSearchOpen(false);
-    }
-  };
 
   const navLinks = [
     { href: "/manga", label: "Beranda", icon: BookOpen },
@@ -78,18 +68,9 @@ export function MangaHeader() {
           })}
         </nav>
 
-        {/* Desktop Manga Search */}
+        {/* Desktop Manga Live Search Box */}
         <div className="ml-auto hidden w-full max-w-xs lg:block">
-          <form onSubmit={handleSearch} className="relative">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari komik, manga, manhwa..."
-              className="w-full rounded-lg border border-white/10 bg-ink-850 px-3.5 py-2 pl-9 text-xs text-white placeholder-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-            />
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-white/40 pointer-events-none" />
-          </form>
+          <MangaSearchBox compact />
         </div>
 
         {/* Mobile Search Button */}
@@ -105,20 +86,14 @@ export function MangaHeader() {
         </div>
       </div>
 
-      {/* Mobile Search Dropdown */}
+      {/* Mobile Live Search Dropdown */}
       {mobileSearchOpen && (
         <div className="border-t border-white/[0.08] p-3 lg:hidden bg-ink-900">
-          <form onSubmit={handleSearch} className="relative">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari manga, manhwa, manhua..."
-              autoFocus
-              className="w-full rounded-lg border border-white/10 bg-ink-950 px-3 py-2 pl-9 text-sm text-white placeholder-white/40 focus:border-accent focus:outline-none"
-            />
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-white/40 pointer-events-none" />
-          </form>
+          <MangaSearchBox
+            autoFocus
+            compact
+            onSelect={() => setMobileSearchOpen(false)}
+          />
         </div>
       )}
 

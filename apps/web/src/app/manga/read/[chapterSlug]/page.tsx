@@ -49,12 +49,20 @@ export default async function MangaReaderPage({
   // Load all chapters for the dropdown selector
   const resolvedComicSlug = chapter.comic.slug || comicSlug;
   let chaptersList: any[] = [];
+  let comicThumbnail: string | undefined;
   if (resolvedComicSlug) {
     const comic = await getMangaDetail(resolvedComicSlug);
     if (comic) {
       chaptersList = comic.chapters;
+      comicThumbnail = comic.thumbnail;
     }
   }
 
-  return <MangaReader chapter={chapter} chaptersList={chaptersList} />;
+  return (
+    <MangaReader
+      chapter={chapter}
+      chaptersList={chaptersList}
+      comicThumbnail={comicThumbnail}
+    />
+  );
 }

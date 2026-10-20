@@ -10,7 +10,9 @@ import {
   User,
 } from "lucide-react";
 import { ChapterList } from "@/components/manga/chapter-list";
-import { getMangaDetail } from "@/lib/manga";
+import { MangaFavoriteButton } from "@/components/manga/manga-favorite-button";
+import { getMangaDetail, isMangaFavorited } from "@/lib/manga";
+import { getSessionUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +43,16 @@ export async function generateMetadata({ params }: MangaDetailPageProps): Promis
 
 export default async function MangaDetailPage({ params }: MangaDetailPageProps) {
   const { slug } = await params;
-  const comic = await getMangaDetail(slug);
+  const [comic, user] = await Promise.all([
+    getMangaDetail(slug),
+    getSessionUser(),
+  ]);
 
   if (!comic) {
     notFound();
   }
+
+  const isFavorited = user ? await isMangaFavorited(user.id, comic.slug) : false;
 
   const firstChapter = comic.chapters.length > 0 ? comic.chapters[comic.chapters.length - 1] : null;
   const latestChapter = comic.chapters.length > 0 ? comic.chapters[0] : null;
@@ -168,6 +175,15 @@ export default async function MangaDetailPage({ params }: MangaDetailPageProps) 
                     Chapter Terbaru ({latestChapter.title})
                   </Link>
                 )}
+
+                <MangaFavoriteButton
+                  comicSlug={comic.slug}
+                  comicTitle={comic.title}
+                  comicThumbnail={comic.thumbnail}
+                  comicType={type}
+                  initialFavorited={isFavorited}
+                  isLoggedIn={Boolean(user)}
+                />
               </div>
             </div>
           </div>

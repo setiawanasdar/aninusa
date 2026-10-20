@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Activity,
+  BookOpen,
   Database,
   LayoutDashboard,
   ShieldCheck,
@@ -21,6 +22,7 @@ export const dynamic = "force-dynamic";
 const NAV = [
   { href: "/admin", label: "Dasbor", icon: LayoutDashboard },
   { href: "/admin/anime", label: "Anime", icon: Database },
+  { href: "/admin/manga", label: "Manga & Komik", icon: BookOpen },
   { href: "/admin/providers", label: "Provider & sinkronisasi", icon: Activity },
   { href: "/admin/health", label: "Kesehatan sumber", icon: Video },
   { href: "/admin/users", label: "Pengguna", icon: Users },

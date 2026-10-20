@@ -19,9 +19,10 @@ import type { ChapterDetail, MangaChapterItem } from "@aninusa/types";
 interface MangaReaderProps {
   chapter: ChapterDetail;
   chaptersList?: MangaChapterItem[];
+  comicThumbnail?: string | null;
 }
 
-export function MangaReader({ chapter, chaptersList = [] }: MangaReaderProps) {
+export function MangaReader({ chapter, chaptersList = [], comicThumbnail }: MangaReaderProps) {
   const router = useRouter();
   const readerContainerRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +36,30 @@ export function MangaReader({ chapter, chaptersList = [] }: MangaReaderProps) {
 
   const totalImages = chapter.images.length;
   const comicSlug = chapter.comic.slug;
+
+  // Auto-record reading history with debounce
+  useEffect(() => {
+    if (!comicSlug || !chapter.chapterSlug) return;
+
+    const timer = setTimeout(() => {
+      fetch("/api/manga/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comicSlug,
+          comicTitle: chapter.comic.title || "Komik",
+          thumbnail: comicThumbnail,
+          lastChapterSlug: chapter.chapterSlug,
+          lastChapterTitle: chapter.title,
+          lastPage: currentPage,
+        }),
+      }).catch(() => {
+        // Silently catch if unauthenticated or offline
+      });
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [comicSlug, chapter.comic.title, chapter.chapterSlug, chapter.title, currentPage, comicThumbnail]);
 
   // Sync title and listen for keyboard navigation
   useEffect(() => {

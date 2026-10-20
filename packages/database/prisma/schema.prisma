@@ -227,9 +227,11 @@ model User {
   updatedAt    DateTime @updatedAt
 
   sessions     Session[]
-  watchHistory WatchHistory[]
-  favorites    Favorite[]
-  auditLogs    AuditLog[]
+  watchHistory        WatchHistory[]
+  favorites           Favorite[]
+  mangaFavorites      MangaFavorite[]
+  mangaReadingHistory MangaReadingHistory[]
+  auditLogs           AuditLog[]
 }
 
 model Session {
@@ -363,4 +365,37 @@ model AuditLog {
 
   @@index([createdAt(sort: Desc)])
   @@index([userId])
+}
+
+model MangaFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  comicSlug String
+  title     String
+  thumbnail String?
+  type      String?  @default("Manga")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, comicSlug])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model MangaReadingHistory {
+  id               String   @id @default(cuid())
+  userId           String
+  comicSlug        String
+  comicTitle       String
+  thumbnail        String?
+  lastChapterSlug  String
+  lastChapterTitle String
+  lastPage         Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, comicSlug])
+  @@index([userId, updatedAt(sort: Desc)])
 }

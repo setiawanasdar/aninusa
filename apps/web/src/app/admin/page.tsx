@@ -2,9 +2,11 @@ import { requireAdminPage } from "@/lib/page-auth";
 import Link from "next/link";
 import {
   AlertTriangle,
+  BookOpen,
   CheckCircle2,
   Database,
   Film,
+  History,
   RefreshCw,
   Users,
   Video,
@@ -21,11 +23,11 @@ export default async function AdminDashboardPage() {
   const cards = [
     { label: "Total anime", value: stats.animeCount, icon: Database, href: "/admin/anime" },
     { label: "Total episode", value: stats.episodeCount, icon: Film, href: "/admin/anime" },
+    { label: "Manga Favorit", value: stats.mangaFavoritesCount, icon: BookOpen, href: "/admin/manga" },
+    { label: "Riwayat Baca Komik", value: stats.mangaHistoryCount, icon: History, href: "/admin/manga" },
     { label: "Sumber video", value: stats.sourceCount, icon: Video, href: "/admin/health" },
     { label: "Provider aktif", value: stats.activeProviders, icon: CheckCircle2, href: "/admin/providers" },
     { label: "Job gagal", value: stats.failedJobs, icon: AlertTriangle, href: "/admin/providers" },
-    { label: "Sumber rusak", value: stats.brokenSources, icon: Video, href: "/admin/health" },
-    { label: "Subtitle rusak", value: stats.brokenSubtitles, icon: Film, href: "/admin/health" },
     { label: "Pengguna", value: stats.userCount, icon: Users, href: "/admin/users" },
   ];
 

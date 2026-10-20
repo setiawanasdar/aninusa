@@ -47,7 +47,11 @@ export async function afterCatalogMutation(): Promise<void> {
 }
 
 export async function getAdminStats() {
-  const userCount = await prisma.user.count().catch(() => 1);
+  const [userCount, mangaFavoritesCount, mangaHistoryCount] = await Promise.all([
+    prisma.user.count().catch(() => 1),
+    prisma.mangaFavorite.count().catch(() => 0),
+    prisma.mangaReadingHistory.count().catch(() => 0),
+  ]);
 
   let recentAnime: Array<{
     id: string;
@@ -160,7 +164,53 @@ export async function getAdminStats() {
     brokenSources: 0,
     brokenSubtitles: 0,
     userCount,
+    mangaFavoritesCount,
+    mangaHistoryCount,
     recentAnime,
     recentJobs,
+  };
+}
+
+export async function getMangaAdminStats() {
+  const [
+    mangaFavoritesCount,
+    mangaHistoryCount,
+    activeReaders,
+    recentHistory,
+    topFavorites,
+  ] = await Promise.all([
+    prisma.mangaFavorite.count().catch(() => 0),
+    prisma.mangaReadingHistory.count().catch(() => 0),
+    prisma.mangaReadingHistory
+      .groupBy({ by: ["userId"] })
+      .then((g) => g.length)
+      .catch(() => 0),
+    prisma.mangaReadingHistory
+      .findMany({
+        orderBy: { updatedAt: "desc" },
+        take: 12,
+        include: {
+          user: {
+            select: { id: true, username: true, email: true },
+          },
+        },
+      })
+      .catch(() => []),
+    prisma.mangaFavorite
+      .groupBy({
+        by: ["comicSlug", "title", "type"],
+        _count: { comicSlug: true },
+        orderBy: { _count: { comicSlug: "desc" } },
+        take: 8,
+      })
+      .catch(() => []),
+  ]);
+
+  return {
+    mangaFavoritesCount,
+    mangaHistoryCount,
+    activeReaders,
+    recentHistory,
+    topFavorites,
   };
 }

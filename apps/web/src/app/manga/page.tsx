@@ -11,7 +11,16 @@ import {
 } from "lucide-react";
 import { MangaCard } from "@/components/manga/manga-card";
 import { MangaRail } from "@/components/manga/manga-rail";
-import { getMangaHomeSections, getMangaLatest, MANGA_GENRES } from "@/lib/manga";
+import {
+  getMangaHomeSections,
+  getMangaLatest,
+  getMangaByType,
+  getMangaPopular,
+  getUserMangaReadingHistory,
+  MANGA_GENRES,
+} from "@/lib/manga";
+import { getSessionUser } from "@/lib/auth";
+import type { MangaSummary } from "@aninusa/types";
 
 export const dynamic = "force-dynamic";
 
@@ -31,27 +40,57 @@ export default async function MangaHomePage({ searchParams }: MangaPageProps) {
   const tab = typeof rawParams.tab === "string" ? rawParams.tab : "all";
   const page = parseInt(typeof rawParams.page === "string" ? rawParams.page : "1", 10) || 1;
 
-  const [homeData, latestPaginated] = await Promise.all([
-    getMangaHomeSections(),
-    page > 1 ? getMangaLatest(page) : null,
-  ]);
+  const user = await getSessionUser();
 
-  const { featured, popular, latest, manhwa, manga, manhua } = homeData;
+  // Load user reading history if authenticated and on home page
+  const readingHistory =
+    user && tab === "all" && page === 1
+      ? await getUserMangaReadingHistory(user.id, 6)
+      : [];
 
-  const displayItems =
-    page > 1 && latestPaginated
-      ? latestPaginated.items
-      : tab === "popular"
-        ? popular
-        : tab === "latest"
-          ? latest
-          : tab === "manhwa"
-            ? manhwa
-            : tab === "manga"
-              ? manga
-              : tab === "manhua"
-                ? manhua
-                : latest;
+  let displayItems: MangaSummary[] = [];
+  let hasNextPage = true;
+  let homeSections = null;
+
+  if (tab === "all") {
+    if (page === 1) {
+      homeSections = await getMangaHomeSections();
+      // For the bottom grid on home page 1, fetch page 2 to avoid repeating the latest rail items
+      const bottomCatalog = await getMangaLatest(2).catch(() => ({
+        items: [] as MangaSummary[],
+        hasNextPage: true,
+      }));
+      displayItems = bottomCatalog.items.length > 0 ? bottomCatalog.items : homeSections.latest;
+      hasNextPage = bottomCatalog.hasNextPage;
+    } else {
+      const result = await getMangaLatest(page);
+      displayItems = result.items;
+      hasNextPage = result.hasNextPage;
+    }
+  } else if (tab === "manhwa") {
+    const result = await getMangaByType("manhwa", page);
+    displayItems = result.items;
+    hasNextPage = result.hasNextPage;
+  } else if (tab === "manga") {
+    const result = await getMangaByType("manga", page);
+    displayItems = result.items;
+    hasNextPage = result.hasNextPage;
+  } else if (tab === "manhua") {
+    const result = await getMangaByType("manhua", page);
+    displayItems = result.items;
+    hasNextPage = result.hasNextPage;
+  } else if (tab === "latest") {
+    const result = await getMangaLatest(page);
+    displayItems = result.items;
+    hasNextPage = result.hasNextPage;
+  } else if (tab === "popular") {
+    displayItems = await getMangaPopular();
+    hasNextPage = false;
+  } else {
+    const result = await getMangaLatest(page);
+    displayItems = result.items;
+    hasNextPage = result.hasNextPage;
+  }
 
   const tabLabels: Record<string, string> = {
     all: "Semua Komik",
@@ -69,6 +108,12 @@ export default async function MangaHomePage({ searchParams }: MangaPageProps) {
     { id: "manhwa", label: "Manhwa (Korea)", icon: Sparkles },
     { id: "manga", label: "Manga (Jepang)", icon: Compass },
   ];
+
+  const featured = homeSections?.featured;
+  const popular = homeSections?.popular || [];
+  const latest = homeSections?.latest || [];
+  const manhwa = homeSections?.manhwa || [];
+  const manga = homeSections?.manga || [];
 
   return (
     <div className="container-page py-6 sm:py-8 space-y-10 sm:space-y-12">
@@ -142,6 +187,66 @@ export default async function MangaHomePage({ searchParams }: MangaPageProps) {
         </section>
       )}
 
+      {/* Reading History Rail (For logged-in users with history) */}
+      {readingHistory.length > 0 && (
+        <section className="space-y-4 rounded-2xl border border-white/10 bg-ink-950/60 p-5 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold tracking-tight text-white sm:text-lg flex items-center gap-2">
+                <History className="h-4 w-4 text-accent" />
+                Lanjutkan Membaca
+              </h2>
+              <p className="text-xs text-white/45 mt-0.5">
+                Komik yang terakhir kali kamu baca
+              </p>
+            </div>
+            <Link
+              href="/profile#manga-history"
+              className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+            >
+              <span>Riwayat Lengkap</span>
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 sm:gap-4">
+            {readingHistory.map((item) => (
+              <Link
+                key={item.id}
+                href={`/manga/read/${item.lastChapterSlug}?comic=${item.comicSlug}`}
+                className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-ink-900/80 p-2.5 transition-all hover:border-accent/40 hover:bg-ink-850 hover:shadow-lg"
+              >
+                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-ink-950">
+                  {item.thumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.thumbnail}
+                      alt={item.comicTitle}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-white/30">
+                      <BookOpen className="h-8 w-8" />
+                    </div>
+                  )}
+                  <span className="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-semibold text-accent backdrop-blur-sm">
+                    Hal. {item.lastPage}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1">
+                  <h3 className="line-clamp-1 text-xs font-bold text-white group-hover:text-accent">
+                    {item.comicTitle}
+                  </h3>
+                  <p className="line-clamp-1 text-[11px] text-white/50">
+                    {item.lastChapterTitle}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Tab Filter Navigation Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
@@ -179,7 +284,7 @@ export default async function MangaHomePage({ searchParams }: MangaPageProps) {
       </div>
 
       {/* PORTAL EXPERIENCE (When on default 'all' tab & page 1) */}
-      {tab === "all" && page === 1 ? (
+      {tab === "all" && page === 1 && homeSections ? (
         <div className="space-y-12">
           {/* Rail 1: Trending & Populer */}
           {popular.length > 0 && (
@@ -255,12 +360,12 @@ export default async function MangaHomePage({ searchParams }: MangaPageProps) {
             </div>
           </section>
 
-          {/* Catalog Grid Section */}
+          {/* Catalog Grid Section (Koleksi Rilisan Lainnya) */}
           <section className="space-y-4 pt-4 border-t border-white/[0.08]">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold tracking-tight text-white sm:text-xl flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-accent" />
-                Semua Komik Terbaru
+                Koleksi Rilisan Lainnya
               </h2>
               <span className="text-xs text-white/40">{displayItems.length} judul</span>
             </div>
@@ -315,12 +420,14 @@ export default async function MangaHomePage({ searchParams }: MangaPageProps) {
           </Link>
         )}
         <span className="text-xs text-white/60 font-medium">Halaman {page}</span>
-        <Link
-          href={`/manga?${tab !== "all" ? `tab=${tab}&` : ""}page=${page + 1}`}
-          className="rounded-lg border border-accent/40 bg-accent/20 px-4 py-2 text-xs font-semibold text-accent hover:bg-accent/30 transition-colors"
-        >
-          Halaman Berikutnya
-        </Link>
+        {hasNextPage && (
+          <Link
+            href={`/manga?${tab !== "all" ? `tab=${tab}&` : ""}page=${page + 1}`}
+            className="rounded-lg border border-accent/40 bg-accent/20 px-4 py-2 text-xs font-semibold text-accent hover:bg-accent/30 transition-colors"
+          >
+            Halaman Berikutnya
+          </Link>
+        )}
       </div>
     </div>
   );
