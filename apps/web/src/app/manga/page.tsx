@@ -55,13 +55,13 @@ export default async function MangaHomePage({ searchParams }: MangaPageProps) {
   if (tab === "all") {
     if (page === 1) {
       homeSections = await getMangaHomeSections();
-      // For the bottom grid on home page 1, fetch page 2 to avoid repeating the latest rail items
-      const bottomCatalog = await getMangaLatest(2).catch(() => ({
-        items: [] as MangaSummary[],
-        hasNextPage: true,
-      }));
-      displayItems = bottomCatalog.items.length > 0 ? bottomCatalog.items : homeSections.latest;
-      hasNextPage = bottomCatalog.hasNextPage;
+      displayItems =
+        homeSections.manhua.length > 0
+          ? homeSections.manhua
+          : homeSections.latest.length > 0
+            ? homeSections.latest
+            : homeSections.popular;
+      hasNextPage = true;
     } else {
       const result = await getMangaLatest(page);
       displayItems = result.items;

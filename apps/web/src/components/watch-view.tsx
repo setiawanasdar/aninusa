@@ -77,6 +77,12 @@ export function WatchView({
               progress: progress.currentTime,
               duration: progress.duration,
               completed: progress.completed,
+              animeSlug: anime.slug,
+              animeTitle: anime.title,
+              animePoster: anime.poster,
+              episodeNumber: episode.number,
+              episodeTitle: episode.title,
+              thumbnail: episode.thumbnail,
             }),
             keepalive: true,
           });
@@ -96,8 +102,42 @@ export function WatchView({
         /* storage can be unavailable */
       }
     },
-    [authenticated, episode.id],
+    [
+      authenticated,
+      episode.id,
+      episode.number,
+      episode.title,
+      episode.thumbnail,
+      anime.slug,
+      anime.title,
+      anime.poster,
+    ],
   );
+
+  // Auto-record initial watch presence for authenticated users
+  useEffect(() => {
+    if (!authenticated || !episode.id) return;
+    const timer = setTimeout(() => {
+      fetch("/api/watch-progress", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          episodeId: episode.id,
+          progress: startAt || 1,
+          duration: episode.duration || 1440,
+          completed: false,
+          animeSlug: anime.slug,
+          animeTitle: anime.title,
+          animePoster: anime.poster,
+          episodeNumber: episode.number,
+          episodeTitle: episode.title,
+          thumbnail: episode.thumbnail,
+        }),
+      }).catch(() => {});
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [authenticated, episode.id, anime.slug, anime.title, anime.poster, episode.number, episode.title, episode.thumbnail, episode.duration, startAt]);
 
   const goNext = useCallback(() => {
     if (nextEpisode) {
@@ -259,7 +299,9 @@ export function WatchView({
                 })()}
               </div>
               <FavoriteButton
-                animeId={anime.id}
+                animeId={anime.id || anime.slug}
+                title={anime.title}
+                poster={anime.poster}
                 initialFavorited={favorited}
                 authenticated={authenticated}
               />

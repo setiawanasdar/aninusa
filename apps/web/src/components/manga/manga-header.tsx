@@ -20,17 +20,17 @@ export function MangaHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-ink-950/95 backdrop-blur-md">
-      <div className="container-page flex h-16 items-center gap-3 sm:gap-5">
+      <div className="container-page flex h-16 items-center gap-2 sm:gap-5 w-full">
         {/* Brand Logo */}
         <Link
           href="/manga"
-          className="flex shrink-0 items-center gap-2"
+          className="flex shrink-0 items-center gap-1.5 sm:gap-2"
           aria-label="AniNusa Manga beranda"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-tr from-accent to-red-500 text-white shadow-md shadow-accent/20">
             <BookOpen className="h-3.5 w-3.5" />
           </span>
-          <span className="text-[17px] font-extrabold tracking-tight text-white">
+          <span className="text-[16px] sm:text-[17px] font-extrabold tracking-tight text-white">
             Ani<span className="text-accent">Nusa</span>{" "}
             <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/30 bg-accent/15 px-1.5 py-0.5 rounded">
               Manga
@@ -74,7 +74,7 @@ export function MangaHeader() {
         </div>
 
         {/* Mobile Search Button */}
-        <div className="ml-auto flex items-center gap-1 lg:hidden">
+        <div className="ml-auto flex shrink-0 items-center gap-1 lg:hidden">
           <button
             type="button"
             onClick={() => setMobileSearchOpen(!mobileSearchOpen)}

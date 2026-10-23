@@ -16,8 +16,8 @@ async function fetchKomiku<T>(
   const url = `${KOMIKU_API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   try {
     const res = await fetch(url, {
-      next: { revalidate: options?.revalidate ?? 300 },
-      signal: AbortSignal.timeout(options?.timeoutMs ?? 9000),
+      next: { revalidate: options?.revalidate ?? 600 },
+      signal: AbortSignal.timeout(options?.timeoutMs ?? 4500),
       headers: {
         Accept: "application/json",
         "User-Agent": "AniNusa/1.0 (MangaReader)",
@@ -118,8 +118,8 @@ export async function getMangaLatest(page = 1): Promise<{
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Accept: "text/html",
       },
-      signal: AbortSignal.timeout(8000),
-      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(4500),
+      next: { revalidate: 600 },
     });
     if (res.ok) {
       const html = await res.text();
@@ -542,8 +542,8 @@ export async function getMangaByGenre(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           Accept: "text/html",
         },
-        signal: AbortSignal.timeout(8000),
-        next: { revalidate: 300 },
+        signal: AbortSignal.timeout(4500),
+        next: { revalidate: 600 },
       }
     );
     if (res.ok) {
@@ -628,8 +628,8 @@ export async function getMangaByType(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           Accept: "text/html",
         },
-        signal: AbortSignal.timeout(8000),
-        next: { revalidate: 300 },
+        signal: AbortSignal.timeout(4500),
+        next: { revalidate: 600 },
       }
     );
     if (res.ok) {

@@ -169,7 +169,7 @@ async function fetchAniKoto<T>(
   try {
     const res = await fetch(url, {
       next: { revalidate: options?.revalidate ?? 300 },
-      signal: AbortSignal.timeout(options?.timeoutMs ?? 6000),
+      signal: AbortSignal.timeout(options?.timeoutMs ?? 4000),
       headers: {
         Accept: "application/json",
         "User-Agent": "AniNusa/1.0",
@@ -585,12 +585,24 @@ export async function getAnimeEpisodes(animeIdOrSlug: string): Promise<EpisodeDt
 
   let episodes: EpisodeDto[] = [];
   try {
-    const infoRes = await fetchAniKoto<any>(`/info?id=${encodeURIComponent(targetSlug)}`);
-    const animeId = infoRes?.results?.animeId ? String(infoRes.results.animeId) : targetSlug;
-    const poster = infoRes?.results?.poster || null;
-    const animeTitle = infoRes?.results?.title || "Anime";
+    const cachedAnime = await cache().get<AnimeDetail>(CACHE_KEYS.anime(targetSlug));
+    let animeId = cachedAnime?.id || targetSlug;
+    let poster = cachedAnime?.poster || null;
+    let animeTitle = cachedAnime?.title || "Anime";
+    let hasInfo = Boolean(cachedAnime?.title);
+    let infoRes: any = null;
 
-    if (infoRes?.results?.title) {
+    if (!hasInfo) {
+      infoRes = await fetchAniKoto<any>(`/info?id=${encodeURIComponent(targetSlug)}`);
+      if (infoRes?.results?.title) {
+        hasInfo = true;
+        animeId = infoRes.results.animeId ? String(infoRes.results.animeId) : targetSlug;
+        poster = infoRes.results.poster || poster;
+        animeTitle = infoRes.results.title || animeTitle;
+      }
+    }
+
+    if (hasInfo) {
       const epRes = await fetchAniKoto<any>(`/episodes/${encodeURIComponent(animeId)}`);
       const rawList = Array.isArray(epRes?.results?.episodes)
         ? epRes.results.episodes
@@ -632,10 +644,11 @@ export async function getAnimeEpisodes(animeIdOrSlug: string): Promise<EpisodeDt
           };
         });
       } else {
+        const totalEp = cachedAnime?.episodeCount || infoRes?.results?.episodes;
         const count =
-          typeof infoRes?.results?.episodes === "number"
-            ? infoRes.results.episodes
-            : parseInt(String(infoRes?.results?.episodes || "0"), 10) || 1;
+          typeof totalEp === "number"
+            ? totalEp
+            : parseInt(String(totalEp || "0"), 10) || 1;
 
         episodes = Array.from({ length: count }, (_, i) => {
           const epNum = i + 1;
@@ -1043,7 +1056,9 @@ export async function getRelatedAnime(anime: AnimeDetail, limit = 8): Promise<An
   if (hit) return hit;
 
   const queryGenre = anime.genres?.[0] || anime.title.split(" ")[0] || "anime";
-  const searchRes = await fetchAniKoto<any>(`/search?keyword=${encodeURIComponent(queryGenre)}`);
+  const searchRes = await fetchAniKoto<any>(`/search?keyword=${encodeURIComponent(queryGenre)}`, {
+    timeoutMs: 2500,
+  });
   const rawList = Array.isArray(searchRes?.results?.data)
     ? searchRes.results.data
     : Array.isArray(searchRes?.results)

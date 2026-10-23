@@ -89,10 +89,21 @@ export const watchProgressSchema = z.object({
   progress: z.coerce.number().int().min(0).max(86_400),
   duration: z.coerce.number().int().min(0).max(86_400),
   completed: z.boolean().optional(),
+  animeSlug: z.string().trim().max(255).optional().nullable(),
+  animeTitle: z.string().trim().max(255).optional().nullable(),
+  animePoster: z.string().trim().max(1024).optional().nullable(),
+  episodeNumber: z.coerce.number().optional().nullable(),
+  episodeTitle: z.string().trim().max(255).optional().nullable(),
+  thumbnail: z.string().trim().max(1024).optional().nullable(),
 });
 
 export const favoriteSchema = z.object({
   animeId: z.string().trim().min(1).max(255),
+  title: z.string().trim().max(255).optional().nullable(),
+  poster: z.string().trim().max(1024).optional().nullable(),
+  banner: z.string().trim().max(1024).optional().nullable(),
+  score: z.coerce.number().optional().nullable(),
+  year: z.coerce.number().optional().nullable(),
 });
 
 export const historyQuerySchema = z.object({

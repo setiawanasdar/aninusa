@@ -42,7 +42,7 @@ export function ModeSwitcher() {
 
   return (
     <div
-      className="relative flex items-center rounded-full border border-white/10 bg-ink-900/90 p-0.5 shadow-inner backdrop-blur-md"
+      className="relative flex shrink-0 items-center rounded-full border border-white/10 bg-ink-900/90 p-0.5 shadow-inner backdrop-blur-md"
       role="tablist"
       aria-label="Pilih mode AniNusa"
     >
@@ -66,11 +66,11 @@ export function ModeSwitcher() {
             onClick={(e) => handleSwitch(e, mode.href, mode.id)}
             role="tab"
             aria-selected={isActive}
-            className={`relative z-10 flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-1 sm:py-1.5 text-xs font-bold transition-colors duration-200 ${
+            className={`relative z-10 flex items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3.5 py-0.5 sm:py-1.5 text-[11px] sm:text-xs font-bold transition-colors duration-200 ${
               isActive ? "text-white" : "text-white/60 hover:text-white/90"
             }`}
           >
-            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" aria-hidden="true" />
             <span>{mode.label}</span>
           </Link>
         );

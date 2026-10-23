@@ -182,7 +182,12 @@ export default async function AnimeDetailPage({ params }: AnimePageProps) {
                   Tonton sekarang
                 </Link>
                 <FavoriteButton
-                  animeId={anime.id}
+                  animeId={anime.id || anime.slug}
+                  title={anime.title}
+                  poster={anime.poster}
+                  banner={anime.banner}
+                  score={anime.score}
+                  year={anime.year}
                   initialFavorited={favoriteIds.includes(anime.id) || favoriteIds.includes(anime.slug)}
                   authenticated={Boolean(user)}
                 />

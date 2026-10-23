@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Heart, Loader2 } from "lucide-react";
 
@@ -24,6 +24,7 @@ export function MangaFavoriteButton({
   variant = "secondary",
 }: MangaFavoriteButtonProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [favorited, setFavorited] = useState(initialFavorited);
   const [loading, setLoading] = useState(false);
 
@@ -55,11 +56,13 @@ export function MangaFavoriteButton({
 
       const data = await res.json();
       setFavorited(Boolean(data.favorited));
-      router.refresh();
+      setLoading(false);
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err) {
       console.error("Failed to toggle manga favorite:", err);
       setFavorited(previousState);
-    } finally {
       setLoading(false);
     }
   };

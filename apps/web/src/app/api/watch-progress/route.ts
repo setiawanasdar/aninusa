@@ -20,11 +20,48 @@ export async function POST(request: Request) {
     const user = await requireApiUser();
     const input = await parseJson(request, watchProgressSchema);
 
-    const episode = await prisma.episode.findUnique({
+    let episode = await prisma.episode.findUnique({
       where: { id: input.episodeId },
       select: { id: true, animeId: true, duration: true },
     });
-    if (!episode) throw errors.notFound("Episode tidak ditemukan");
+
+    if (!episode) {
+      // Auto-provision Anime record if not present
+      const rawAnimeSlug =
+        input.animeSlug?.trim() || input.episodeId.split(/-(?:episode-)?\d+$/i)[0] || "anime";
+      let anime = await prisma.anime.findFirst({
+        where: {
+          OR: [{ slug: rawAnimeSlug }, { id: rawAnimeSlug }],
+        },
+        select: { id: true },
+      });
+
+      if (!anime) {
+        anime = await prisma.anime.create({
+          data: {
+            id: rawAnimeSlug,
+            slug: rawAnimeSlug,
+            title: input.animeTitle || rawAnimeSlug.replace(/-/g, " "),
+            poster: input.animePoster || null,
+          },
+          select: { id: true },
+        });
+      }
+
+      // Auto-provision Episode record
+      const epNum = input.episodeNumber ?? 1;
+      episode = await prisma.episode.create({
+        data: {
+          id: input.episodeId,
+          animeId: anime.id,
+          episodeNumber: epNum,
+          title: input.episodeTitle || `Episode ${epNum}`,
+          duration: input.duration || 0,
+          thumbnail: input.thumbnail || null,
+        },
+        select: { id: true, animeId: true, duration: true },
+      });
+    }
 
     const duration = input.duration || episode.duration || 0;
     const progress = Math.max(0, Math.min(input.progress, duration || input.progress));

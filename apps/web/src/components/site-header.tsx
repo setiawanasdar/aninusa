@@ -73,9 +73,9 @@ export function SiteHeader({ user }: SiteHeaderProps) {
           : "border-transparent bg-gradient-to-b from-ink-950/90 to-transparent"
       }`}
     >
-      <div className="container-page flex h-16 items-center gap-3 sm:gap-5">
+      <div className="container-page flex h-16 items-center gap-2 sm:gap-5 w-full">
         <Link href="/" className="flex shrink-0 items-center" aria-label="AniNusa beranda">
-          <span className="text-[17px] font-extrabold tracking-tight text-white">
+          <span className="text-[16px] sm:text-[17px] font-extrabold tracking-tight text-white">
             Ani<span className="text-accent">Nusa</span>
           </span>
         </Link>
@@ -104,11 +104,11 @@ export function SiteHeader({ user }: SiteHeaderProps) {
           <SearchBox compact />
         </div>
 
-        <div className="ml-auto flex items-center gap-1 lg:ml-2">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1 lg:ml-2">
           <button
             type="button"
             onClick={() => setSearchOpen((open) => !open)}
-            className="rounded-md p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+            className="rounded-md p-1.5 sm:p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
             aria-label="Cari anime"
             aria-expanded={searchOpen}
           >
@@ -130,7 +130,7 @@ export function SiteHeader({ user }: SiteHeaderProps) {
               <button
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-md p-1.5 pr-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="flex items-center gap-1.5 rounded-md p-1 sm:p-1.5 sm:pr-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
@@ -202,7 +202,7 @@ export function SiteHeader({ user }: SiteHeaderProps) {
           <button
             type="button"
             onClick={() => setMobileOpen((open) => !open)}
-            className="rounded-md p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:hidden"
+            className="shrink-0 rounded-md p-1.5 sm:p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:hidden"
             aria-label={mobileOpen ? "Tutup menu" : "Buka menu"}
             aria-expanded={mobileOpen}
           >

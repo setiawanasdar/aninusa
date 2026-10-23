@@ -38,29 +38,52 @@ export async function POST(request: Request) {
     });
 
     if (!anime) {
-      const details = await getAnimeBySlug(input.animeId);
-      if (!details) throw errors.notFound("Anime tidak ditemukan");
+      if (input.title) {
+        anime = await prisma.anime.upsert({
+          where: { slug: input.animeId },
+          update: {
+            title: input.title,
+            poster: input.poster ?? undefined,
+            banner: input.banner ?? undefined,
+            score: input.score ?? undefined,
+            year: input.year ?? undefined,
+          },
+          create: {
+            id: input.animeId,
+            slug: input.animeId,
+            title: input.title,
+            poster: input.poster,
+            banner: input.banner,
+            score: input.score,
+            year: input.year,
+          },
+          select: { id: true },
+        });
+      } else {
+        const details = await getAnimeBySlug(input.animeId);
+        if (!details) throw errors.notFound("Anime tidak ditemukan");
 
-      anime = await prisma.anime.upsert({
-        where: { slug: details.slug },
-        update: {
-          title: details.title,
-          poster: details.poster,
-          banner: details.banner,
-          score: details.score,
-          year: details.year,
-        },
-        create: {
-          id: details.id || details.slug,
-          slug: details.slug,
-          title: details.title,
-          poster: details.poster,
-          banner: details.banner,
-          score: details.score,
-          year: details.year,
-        },
-        select: { id: true },
-      });
+        anime = await prisma.anime.upsert({
+          where: { slug: details.slug },
+          update: {
+            title: details.title,
+            poster: details.poster,
+            banner: details.banner,
+            score: details.score,
+            year: details.year,
+          },
+          create: {
+            id: details.id || details.slug,
+            slug: details.slug,
+            title: details.title,
+            poster: details.poster,
+            banner: details.banner,
+            score: details.score,
+            year: details.year,
+          },
+          select: { id: true },
+        });
+      }
     }
 
     const favorite = await prisma.favorite.upsert({

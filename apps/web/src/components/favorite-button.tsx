@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, BookmarkCheck, Loader2 } from "lucide-react";
 
@@ -9,10 +9,26 @@ interface FavoriteButtonProps {
   initialFavorited: boolean;
   authenticated: boolean;
   className?: string;
+  title?: string;
+  poster?: string | null;
+  banner?: string | null;
+  score?: number | null;
+  year?: number | null;
 }
 
-export function FavoriteButton({ animeId, initialFavorited, authenticated, className = "" }: FavoriteButtonProps) {
+export function FavoriteButton({
+  animeId,
+  initialFavorited,
+  authenticated,
+  className = "",
+  title,
+  poster,
+  banner,
+  score,
+  year,
+}: FavoriteButtonProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [favorited, setFavorited] = useState(initialFavorited);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -33,16 +49,25 @@ export function FavoriteButton({ animeId, initialFavorited, authenticated, class
         ? await fetch("/api/favorites", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ animeId }),
+            body: JSON.stringify({
+              animeId,
+              title,
+              poster,
+              banner,
+              score,
+              year,
+            }),
           })
         : await fetch(`/api/favorites/${encodeURIComponent(animeId)}`, { method: "DELETE" });
 
       if (!response.ok) throw new Error("request failed");
-      router.refresh();
+      setPending(false);
+      startTransition(() => {
+        router.refresh();
+      });
     } catch {
       setFavorited(!next);
       setMessage("Gagal menyimpan favorit. Coba lagi.");
-    } finally {
       setPending(false);
     }
   };

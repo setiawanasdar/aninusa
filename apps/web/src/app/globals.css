@@ -16,13 +16,13 @@
   }
 
   html {
-    @apply bg-ink-950 text-white antialiased;
+    @apply bg-ink-950 text-white antialiased overflow-x-hidden max-w-full;
     scrollbar-color: #2a2a34 transparent;
     scrollbar-width: thin;
   }
 
   body {
-    @apply min-h-screen bg-ink-950 font-sans text-[15px] leading-relaxed text-white/90;
+    @apply min-h-screen bg-ink-950 font-sans text-[15px] leading-relaxed text-white/90 overflow-x-hidden max-w-full;
     text-rendering: optimizeLegibility;
   }
 
