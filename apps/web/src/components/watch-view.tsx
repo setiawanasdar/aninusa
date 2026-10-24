@@ -252,7 +252,7 @@ export function WatchView({
           {sources[activeSourceIndex]?.format === "EMBED" && (
             <div className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-200 shadow-sm">
               <span className="shrink-0 font-bold text-amber-400">💡 Tips Server:</span>
-              <span>Gunakan opsi server berlabel <strong>Bebas Iklan</strong> di atas untuk pemutaran langsung tanpa iklan. Jika menggunakan server embed pihak ketiga dan terbuka tab baru pada klik pertama, cukup tutup tab tersebut lalu tekan tombol play kembali.</span>
+              <span>Jika pemutar belum berputar atau terbuka tab baru pada klik pertama, cukup tutup tab tersebut lalu tekan tombol play pada pemutar. Anda juga dapat mengganti opsi server di atas jika satu server sedang lambat.</span>
             </div>
           )}
 

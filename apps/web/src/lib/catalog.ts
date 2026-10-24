@@ -791,6 +791,16 @@ export async function getEpisodePlayback(
       for (const res of results) {
         if (!res || !res.streamRes?.success || !res.streamRes?.results?.url) continue;
         const { srv, streamRes } = res;
+        const srvName = (srv.name || "").trim();
+
+        // Hapus server HD-1 dan vidstream 2 sesuai permintaan pengguna
+        if (
+          /(?:hd[\s-]*1|vidstream[\s-]*2)/i.test(srvName) ||
+          /(?:hd[\s-]*1|vidstream[\s-]*2)/i.test(srv.link_id || "")
+        ) {
+          continue;
+        }
+
         const streamUrl = streamRes.results.url;
         aniSources.push({
           id: srv.link_id,
@@ -799,7 +809,7 @@ export async function getEpisodePlayback(
           codec: null,
           language: srv.type === "dub" ? "en" : "ja",
           url: streamUrl,
-          label: srv.name ? `${srv.name} (Sub Eng)` : "Server HD (Sub Eng)",
+          label: srvName ? `${srvName} (Sub Eng)` : "Server HD (Sub Eng)",
           status: "ACTIVE",
         });
 
@@ -948,6 +958,12 @@ export async function getEpisodePlayback(
     }
   }
 
+  const cleanSources = sources.filter(
+    (s) =>
+      !/(?:hd[\s-]*1|vidstream[\s-]*2)/i.test(s.label || "") &&
+      !/(?:hd[\s-]*1|vidstream[\s-]*2)/i.test(s.id || ""),
+  );
+
   const playback: EpisodePlayback = {
     episode: {
       ...currentEp,
@@ -955,7 +971,7 @@ export async function getEpisodePlayback(
       introEnd: introEnd ?? currentEp.introEnd,
       outroStart: outroStart ?? currentEp.outroStart,
     },
-    sources,
+    sources: cleanSources.length > 0 ? cleanSources : sources,
     subtitles,
     anime: {
       id: animeSlug,

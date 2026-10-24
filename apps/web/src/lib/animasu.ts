@@ -317,118 +317,6 @@ export async function getAnimasuWatch(episodeSlug: string): Promise<AnimasuWatch
 }
 
 /**
- * Unpacks Dean Edwards packed JavaScript code without using eval().
- */
-export function unpackDeanEdwards(packed: string): string | null {
-  const match = packed.match(
-    /}\s*\(\s*(['"][\s\S]*?['"])\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(['"][\s\S]*?['"])\.split\('\|'\)/,
-  );
-  if (!match) return null;
-  try {
-    let p = match[1].slice(1, -1);
-    p = p.replace(/\\'/g, "'").replace(/\\"/g, '"');
-    const a = parseInt(match[2], 10);
-    let c = parseInt(match[3], 10);
-    const k = match[4].slice(1, -1).split("|");
-
-    while (c--) {
-      const key =
-        c < a
-          ? c.toString(a)
-          : (function (n, radix) {
-              const chars =
-                "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-              let res = "";
-              do {
-                res = chars[n % radix] + res;
-                n = Math.floor(n / radix);
-              } while (n > 0);
-              return res;
-            })(c, a);
-
-      if (k[c]) {
-        p = p.replace(new RegExp("\\b" + key + "\\b", "g"), k[c]);
-      }
-    }
-    return p;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Extracts direct ad-free HLS stream from Vidhide / Filedon embed pages.
- */
-export async function extractVidhideDirectStream(embedUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(embedUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "text/html",
-      },
-      signal: AbortSignal.timeout(3500),
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const unpacked = unpackDeanEdwards(html);
-    if (!unpacked) return null;
-
-    const m3u8Match = unpacked.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
-    return m3u8Match ? m3u8Match[0] : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Extracts direct ad-free HLS / MP4 stream from ok.ru embed page.
- */
-export async function extractOkRuDirectStream(
-  embedUrl: string,
-): Promise<{ hls?: string; mp4?: string } | null> {
-  try {
-    const res = await fetch(embedUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "text/html",
-      },
-      signal: AbortSignal.timeout(3500),
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const m = html.match(/data-module="OKVideo"[^>]*data-options="([^"]+)"/);
-    if (!m) return null;
-
-    const decoded = m[1].replace(/&quot;/g, '"');
-    const json = JSON.parse(decoded);
-    const metadata = json.flashvars?.metadata;
-    if (!metadata) return null;
-
-    const hls = metadata.hlsManifestUrl;
-    const videos: Array<{ name: string; url: string }> = Array.isArray(metadata.videos)
-      ? metadata.videos
-      : [];
-    const bestMp4 =
-      videos.find((v) => v.name === "full" || v.name === "1080")?.url ||
-      videos.find((v) => v.name === "hd" || v.name === "720")?.url ||
-      videos.find((v) => v.name === "sd" || v.name === "480")?.url ||
-      videos[0]?.url;
-
-    if (!hls && !bestMp4) return null;
-    return {
-      hls: hls || undefined,
-      mp4: bestMp4 || undefined,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Resolve Indonesian subtitle streaming playback sources from Animasu for a given anime and episode.
  */
 export async function getAnimasuPlaybackSources(params: {
@@ -438,7 +326,7 @@ export async function getAnimasuPlaybackSources(params: {
   episodeNumber: number;
 }): Promise<PlaybackSource[]> {
   const { animeSlug, animeTitle, altTitles, episodeNumber } = params;
-  const cacheKey = `animasu:playback_sources:${animeSlug || ""}:${animeTitle || ""}:${episodeNumber}`;
+  const cacheKey = `animasu:playback_sources:v2:${animeSlug || ""}:${animeTitle || ""}:${episodeNumber}`;
   const hit = await cache().get<PlaybackSource[]>(cacheKey);
   if (hit) return hit;
 
@@ -563,7 +451,6 @@ export async function getAnimasuPlaybackSources(params: {
         : [];
 
   const sources: PlaybackSource[] = [];
-  const directSources: PlaybackSource[] = [];
 
   for (let i = 0; i < serverItems.length; i++) {
     const srv = serverItems[i];
@@ -572,44 +459,9 @@ export async function getAnimasuPlaybackSources(params: {
     const quality = parseQuality(srv.label);
     const cleanLabel = srv.label ? srv.label.trim() : `${quality}p`;
 
-    // Try extracting direct ad-free HLS/MP4 stream if it's OK.ru
-    if (cleanUrl.includes("ok.ru")) {
-      try {
-        const direct = await extractOkRuDirectStream(cleanUrl);
-        if (direct?.hls || direct?.mp4) {
-          directSources.push({
-            id: `animasu-${targetEp.episodeSlug}-${i}-direct`,
-            quality,
-            format: direct.hls ? "HLS" : "MP4",
-            codec: "H264",
-            language: "id",
-            url: (direct.hls || direct.mp4)!,
-            label: `Sub Indo (${cleanLabel} - Bebas Iklan)`,
-            status: "ACTIVE",
-          });
-        }
-      } catch {
-        /* fallback to embed */
-      }
-    } else if (/vidhide|filedon/i.test(cleanUrl)) {
-      // Try extracting direct ad-free HLS stream if it's Vidhide / Filedon
-      try {
-        const directHls = await extractVidhideDirectStream(cleanUrl);
-        if (directHls) {
-          directSources.push({
-            id: `animasu-${targetEp.episodeSlug}-${i}-vidhide-direct`,
-            quality,
-            format: "HLS",
-            codec: "H264",
-            language: "id",
-            url: directHls,
-            label: `Sub Indo (${cleanLabel} - Bebas Iklan)`,
-            status: "ACTIVE",
-          });
-        }
-      } catch {
-        /* fallback to embed */
-      }
+    // Filter out server HD-1 dan vidstream 2 sesuai permintaan pengguna
+    if (/(?:hd[\s-]*1|vidstream[\s-]*2)/i.test(cleanLabel)) {
+      continue;
     }
 
     sources.push({
@@ -625,48 +477,10 @@ export async function getAnimasuPlaybackSources(params: {
   }
 
   // If no server item had iframeUrl, check defaultIframe / streamUrl
-  if (sources.length === 0 && directSources.length === 0) {
+  if (sources.length === 0) {
     const fallbackRaw = watchData.defaultIframe || watchData.streamUrl;
     if (fallbackRaw) {
       const fallbackUrl = cleanIframeUrl(fallbackRaw);
-      if (fallbackUrl.includes("ok.ru")) {
-        try {
-          const direct = await extractOkRuDirectStream(fallbackUrl);
-          if (direct?.hls || direct?.mp4) {
-            directSources.push({
-              id: `animasu-${targetEp.episodeSlug}-default-direct`,
-              quality: 1080,
-              format: direct.hls ? "HLS" : "MP4",
-              codec: "H264",
-              language: "id",
-              url: (direct.hls || direct.mp4)!,
-              label: "Sub Indo (Default - Bebas Iklan)",
-              status: "ACTIVE",
-            });
-          }
-        } catch {
-          /* fallback to embed */
-        }
-      } else if (/vidhide|filedon/i.test(fallbackUrl)) {
-        try {
-          const directHls = await extractVidhideDirectStream(fallbackUrl);
-          if (directHls) {
-            directSources.push({
-              id: `animasu-${targetEp.episodeSlug}-default-vidhide-direct`,
-              quality: 1080,
-              format: "HLS",
-              codec: "H264",
-              language: "id",
-              url: directHls,
-              label: "Sub Indo (Default - Bebas Iklan)",
-              status: "ACTIVE",
-            });
-          }
-        } catch {
-          /* fallback to embed */
-        }
-      }
-
       sources.push({
         id: `animasu-${targetEp.episodeSlug}-default`,
         quality: 1080,
@@ -680,7 +494,11 @@ export async function getAnimasuPlaybackSources(params: {
     }
   }
 
-  const finalSources = [...directSources, ...sources];
+  const finalSources = sources.filter(
+    (s) =>
+      !/(?:hd[\s-]*1|vidstream[\s-]*2)/i.test(s.label || "") &&
+      !/(?:hd[\s-]*1|vidstream[\s-]*2)/i.test(s.id || ""),
+  );
 
   if (finalSources.length > 0) {
     await cache().set(cacheKey, finalSources, CACHE_TTL.playback);

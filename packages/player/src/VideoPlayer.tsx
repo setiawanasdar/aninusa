@@ -329,11 +329,20 @@ export function VideoPlayer({
         if (autoPlay) void video.play().catch(() => setPlaying(false));
       });
 
+      let networkRetryCount = 0;
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!data.fatal) return;
         switch (data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR:
-            hls.startLoad();
+            networkRetryCount++;
+            if (networkRetryCount <= 2) {
+              hls.startLoad();
+            } else {
+              setError("Sumber video tidak dapat dimuat.");
+              setLoading(false);
+              hls.destroy();
+              hlsRef.current = null;
+            }
             break;
           case Hls.ErrorTypes.MEDIA_ERROR:
             hls.recoverMediaError();

@@ -48,7 +48,7 @@ export const CACHE_KEYS = {
   home: "catalog:home:v1",
   catalog: (query: string) => `catalog:list:v1:${query}`,
   anime: (slug: string) => `catalog:anime:v1:${slug}`,
-  playback: (episodeId: string) => `catalog:playback:v1:${episodeId}`,
+  playback: (episodeId: string) => `catalog:playback:v2:${episodeId}`,
   genres: "catalog:genres:v1",
   studios: "catalog:studios:v1",
   seasons: "catalog:seasons:v1",
