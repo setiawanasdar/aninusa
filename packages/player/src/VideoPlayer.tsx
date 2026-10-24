@@ -465,10 +465,21 @@ export function VideoPlayer({
 
   const toggleFullscreen = useCallback(async () => {
     const container = containerRef.current;
+    const video = videoRef.current;
     if (!container) return;
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
+      const isFs = Boolean(
+        document.fullscreenElement ||
+          // @ts-expect-error webkit prefix
+          document.webkitFullscreenElement,
+      );
+      if (isFs) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else {
+          // @ts-expect-error webkit prefix
+          await document.webkitExitFullscreen?.();
+        }
         if (typeof screen !== "undefined" && screen.orientation) {
           try {
             void (screen.orientation as any).unlock?.();
@@ -477,7 +488,14 @@ export function VideoPlayer({
           }
         }
       } else {
-        await container.requestFullscreen();
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        } else if ((container as any).webkitRequestFullscreen) {
+          await (container as any).webkitRequestFullscreen();
+        } else if (video && (video as any).webkitEnterFullscreen) {
+          (video as any).webkitEnterFullscreen();
+          return;
+        }
         if (typeof screen !== "undefined" && screen.orientation) {
           try {
             void (screen.orientation as any).lock?.("landscape")?.catch?.(() => undefined);
@@ -547,13 +565,22 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
-    const onFullscreenChange = () => setFullscreen(Boolean(document.fullscreenElement));
+    const onFullscreenChange = () =>
+      setFullscreen(
+        Boolean(
+          document.fullscreenElement ||
+            // @ts-expect-error webkit prefix
+            document.webkitFullscreenElement,
+        ),
+      );
     const onPipChange = () => setPipActive(Boolean(document.pictureInPictureElement));
     document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
     document.addEventListener("enterpictureinpicture", onPipChange);
     document.addEventListener("leavepictureinpicture", onPipChange);
     return () => {
       document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
       document.removeEventListener("enterpictureinpicture", onPipChange);
       document.removeEventListener("leavepictureinpicture", onPipChange);
     };
@@ -732,7 +759,45 @@ export function VideoPlayer({
       data-testid="video-player"
     >
       <style>{`
-        .anp-root:fullscreen { border-radius: 0; }
+        .anp-root:fullscreen,
+        .anp-root:-webkit-full-screen {
+          border-radius: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          background: #000 !important;
+          overflow: hidden !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+          box-sizing: border-box !important;
+        }
+        .anp-root:fullscreen .anp-video-wrapper,
+        .anp-root:-webkit-full-screen .anp-video-wrapper {
+          width: 100% !important;
+          height: 100% !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          aspect-ratio: unset !important;
+        }
+        .anp-root:fullscreen iframe,
+        .anp-root:-webkit-full-screen iframe {
+          width: 100% !important;
+          height: 100% !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          border: 0 !important;
+        }
+        .anp-root:fullscreen video,
+        .anp-root:-webkit-full-screen video {
+          width: 100% !important;
+          height: 100% !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          object-fit: contain !important;
+        }
         .anp-range { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 9999px; background: rgba(255,255,255,.22); outline: none; }
         .anp-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #ff3b5c; border: 2px solid #fff; cursor: pointer; }
         .anp-range::-moz-range-thumb { width: 13px; height: 13px; border: 2px solid #fff; border-radius: 50%; background: #ff3b5c; cursor: pointer; }
@@ -742,7 +807,7 @@ export function VideoPlayer({
         }
       `}</style>
 
-      <div className="relative aspect-video w-full">
+      <div className={`anp-video-wrapper relative w-full ${fullscreen ? "h-full max-h-screen" : "aspect-video"}`}>
         {isEmbed && activeSource ? (
           <>
             <iframe
@@ -757,17 +822,17 @@ export function VideoPlayer({
               mozallowfullscreen="true"
               referrerPolicy="no-referrer"
             />
-            <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2">
+            <div className={`absolute right-3 top-3 z-20 flex items-center gap-2 transition-opacity duration-300 ${controlsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/80 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition-all hover:bg-black hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
+                className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/80 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition-all hover:bg-black hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b5c]"
                 aria-label={fullscreen ? "Keluar layar penuh" : "Layar penuh"}
                 title={fullscreen ? "Keluar layar penuh" : "Layar penuh"}
               >
                 {fullscreen ? (
                   <>
-                    <Minimize className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Minimize className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
                     <span className="hidden sm:inline">Keluar</span>
                   </>
                 ) : (

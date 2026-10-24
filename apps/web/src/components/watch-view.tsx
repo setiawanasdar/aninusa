@@ -223,17 +223,25 @@ export function WatchView({
             <button
               type="button"
               onClick={() => {
-                const container = document.querySelector(".anp-root");
+                const container = document.querySelector(".anp-root") as any;
                 if (container) {
-                  if (document.fullscreenElement) {
-                    void document.exitFullscreen();
+                  const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+                  if (isFs) {
+                    if (document.exitFullscreen) {
+                      void document.exitFullscreen();
+                    } else if ((document as any).webkitExitFullscreen) {
+                      void (document as any).webkitExitFullscreen();
+                    }
                     if (typeof screen !== "undefined" && screen.orientation) {
                       try {
                         void (screen.orientation as any).unlock?.();
                       } catch {}
                     }
                   } else {
-                    void container.requestFullscreen();
+                    const req = container.requestFullscreen || container.webkitRequestFullscreen;
+                    if (req) {
+                      void req.call(container);
+                    }
                     if (typeof screen !== "undefined" && screen.orientation) {
                       try {
                         void (screen.orientation as any).lock?.("landscape")?.catch?.(() => undefined);
