@@ -741,6 +741,7 @@ export function VideoPlayer({
               src={activeSource.url}
               title={`Pemutar video ${animeTitle} episode ${episodeNumber}`}
               className="h-full w-full bg-black border-0"
+              sandbox="allow-scripts allow-same-origin allow-forms"
               allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *; accelerometer *; gyroscope *"
               allowFullScreen
               // @ts-expect-error legacy browser fullscreen attributes

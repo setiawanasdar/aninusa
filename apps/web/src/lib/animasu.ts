@@ -317,6 +317,52 @@ export async function getAnimasuWatch(episodeSlug: string): Promise<AnimasuWatch
 }
 
 /**
+ * Extracts direct ad-free HLS / MP4 stream from ok.ru embed page.
+ */
+export async function extractOkRuDirectStream(
+  embedUrl: string,
+): Promise<{ hls?: string; mp4?: string } | null> {
+  try {
+    const res = await fetch(embedUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html",
+      },
+      signal: AbortSignal.timeout(3500),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const m = html.match(/data-module="OKVideo"[^>]*data-options="([^"]+)"/);
+    if (!m) return null;
+
+    const decoded = m[1].replace(/&quot;/g, '"');
+    const json = JSON.parse(decoded);
+    const metadata = json.flashvars?.metadata;
+    if (!metadata) return null;
+
+    const hls = metadata.hlsManifestUrl;
+    const videos: Array<{ name: string; url: string }> = Array.isArray(metadata.videos)
+      ? metadata.videos
+      : [];
+    const bestMp4 =
+      videos.find((v) => v.name === "full" || v.name === "1080")?.url ||
+      videos.find((v) => v.name === "hd" || v.name === "720")?.url ||
+      videos.find((v) => v.name === "sd" || v.name === "480")?.url ||
+      videos[0]?.url;
+
+    if (!hls && !bestMp4) return null;
+    return {
+      hls: hls || undefined,
+      mp4: bestMp4 || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolve Indonesian subtitle streaming playback sources from Animasu for a given anime and episode.
  */
 export async function getAnimasuPlaybackSources(params: {
@@ -451,47 +497,91 @@ export async function getAnimasuPlaybackSources(params: {
         : [];
 
   const sources: PlaybackSource[] = [];
+  const directSources: PlaybackSource[] = [];
 
   for (let i = 0; i < serverItems.length; i++) {
-      const srv = serverItems[i];
-      if (!srv?.iframeUrl) continue;
-      const cleanUrl = cleanIframeUrl(srv.iframeUrl);
-      const quality = parseQuality(srv.label);
-      const cleanLabel = srv.label ? srv.label.trim() : `${quality}p`;
+    const srv = serverItems[i];
+    if (!srv?.iframeUrl) continue;
+    const cleanUrl = cleanIframeUrl(srv.iframeUrl);
+    const quality = parseQuality(srv.label);
+    const cleanLabel = srv.label ? srv.label.trim() : `${quality}p`;
 
-      sources.push({
-        id: `animasu-${targetEp.episodeSlug}-${i}-${quality}`,
-        quality,
-        format: "EMBED",
-        codec: null,
-        language: "id",
-        url: cleanUrl,
-        label: `Sub Indo (${cleanLabel})`,
-        status: "ACTIVE",
-      });
-    }
-
-    // If no server item had iframeUrl, check defaultIframe / streamUrl
-    if (sources.length === 0) {
-      const fallbackRaw = watchData.defaultIframe || watchData.streamUrl;
-      if (fallbackRaw) {
-        const fallbackUrl = cleanIframeUrl(fallbackRaw);
-        sources.push({
-          id: `animasu-${targetEp.episodeSlug}-default`,
-          quality: 1080,
-          format: "EMBED",
-          codec: null,
-          language: "id",
-          url: fallbackUrl,
-          label: "Sub Indo (Default)",
-          status: "ACTIVE",
-        });
+    // Try extracting direct ad-free HLS/MP4 stream if it's OK.ru
+    if (cleanUrl.includes("ok.ru")) {
+      try {
+        const direct = await extractOkRuDirectStream(cleanUrl);
+        if (direct?.hls || direct?.mp4) {
+          directSources.push({
+            id: `animasu-${targetEp.episodeSlug}-${i}-direct`,
+            quality,
+            format: direct.hls ? "HLS" : "MP4",
+            codec: "H264",
+            language: "id",
+            url: (direct.hls || direct.mp4)!,
+            label: `Sub Indo (${cleanLabel} - Bebas Iklan)`,
+            status: "ACTIVE",
+          });
+        }
+      } catch {
+        /* fallback to embed */
       }
     }
 
-  if (sources.length > 0) {
-    await cache().set(cacheKey, sources, CACHE_TTL.playback);
+    sources.push({
+      id: `animasu-${targetEp.episodeSlug}-${i}-${quality}`,
+      quality,
+      format: "EMBED",
+      codec: null,
+      language: "id",
+      url: cleanUrl,
+      label: `Sub Indo (${cleanLabel})`,
+      status: "ACTIVE",
+    });
   }
 
-  return sources;
+  // If no server item had iframeUrl, check defaultIframe / streamUrl
+  if (sources.length === 0 && directSources.length === 0) {
+    const fallbackRaw = watchData.defaultIframe || watchData.streamUrl;
+    if (fallbackRaw) {
+      const fallbackUrl = cleanIframeUrl(fallbackRaw);
+      if (fallbackUrl.includes("ok.ru")) {
+        try {
+          const direct = await extractOkRuDirectStream(fallbackUrl);
+          if (direct?.hls || direct?.mp4) {
+            directSources.push({
+              id: `animasu-${targetEp.episodeSlug}-default-direct`,
+              quality: 1080,
+              format: direct.hls ? "HLS" : "MP4",
+              codec: "H264",
+              language: "id",
+              url: (direct.hls || direct.mp4)!,
+              label: "Sub Indo (Default - Bebas Iklan)",
+              status: "ACTIVE",
+            });
+          }
+        } catch {
+          /* fallback to embed */
+        }
+      }
+
+      sources.push({
+        id: `animasu-${targetEp.episodeSlug}-default`,
+        quality: 1080,
+        format: "EMBED",
+        codec: null,
+        language: "id",
+        url: fallbackUrl,
+        label: "Sub Indo (Default)",
+        status: "ACTIVE",
+      });
+    }
+  }
+
+  const finalSources = [...directSources, ...sources];
+
+  if (finalSources.length > 0) {
+    await cache().set(cacheKey, finalSources, CACHE_TTL.playback);
+  }
+
+  return finalSources;
 }

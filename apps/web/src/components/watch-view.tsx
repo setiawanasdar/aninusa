@@ -4,7 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, ListVideo, Maximize, Server, Star } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ListVideo,
+  Maximize,
+  Server,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import { VideoPlayer } from "@aninusa/player";
 import type { AnimeSummary, EpisodeDto, EpisodePlayback } from "@aninusa/types";
 import { formatEpisodeNumber } from "@aninusa/utils";
@@ -243,9 +251,9 @@ export function WatchView({
           </div>
 
           {sources[activeSourceIndex]?.format === "EMBED" && (
-            <div className="flex items-start gap-1.5 px-1 text-[11px] text-white/40">
-              <span className="shrink-0 font-medium text-white/60">💡 Tips Server:</span>
-              <span>Jika pemutar tidak langsung berputar atau membuka tab baru, cukup tutup tab tersebut dan klik putar kembali, atau pilih opsi server lain di atas.</span>
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-300 shadow-sm">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
+              <span>Ad-Shield aktif: Pemutar dilindungi dari pop-up dan redirect iklan luar. Jika video belum berputar, tekan tombol play pada pemutar.</span>
             </div>
           )}
 
