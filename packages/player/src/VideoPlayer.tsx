@@ -161,10 +161,6 @@ export function VideoPlayer({
     activeSource &&
       (activeSource.format === "EMBED" || /megaplay\.buzz|\/stream\//i.test(activeSource.url)),
   );
-  const isTrustedEmbed = Boolean(
-    activeSource &&
-      /dailymotion\.com|dai\.ly|youtube\.com|youtu\.be|vimeo\.com/i.test(activeSource.url),
-  );
   const activeSubtitle = subtitles.find((track) => track.id === subtitleId) ?? null;
 
   const visibleCues = useMemo(
@@ -745,7 +741,6 @@ export function VideoPlayer({
               src={activeSource.url}
               title={`Pemutar video ${animeTitle} episode ${episodeNumber}`}
               className="h-full w-full bg-black border-0"
-              sandbox={isTrustedEmbed ? undefined : "allow-scripts allow-same-origin allow-forms"}
               allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *; accelerometer *; gyroscope *; web-share *"
               allowFullScreen
               // @ts-expect-error legacy browser fullscreen attributes

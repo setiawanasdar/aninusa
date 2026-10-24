@@ -317,6 +317,72 @@ export async function getAnimasuWatch(episodeSlug: string): Promise<AnimasuWatch
 }
 
 /**
+ * Unpacks Dean Edwards packed JavaScript code without using eval().
+ */
+export function unpackDeanEdwards(packed: string): string | null {
+  const match = packed.match(
+    /}\s*\(\s*(['"][\s\S]*?['"])\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(['"][\s\S]*?['"])\.split\('\|'\)/,
+  );
+  if (!match) return null;
+  try {
+    let p = match[1].slice(1, -1);
+    p = p.replace(/\\'/g, "'").replace(/\\"/g, '"');
+    const a = parseInt(match[2], 10);
+    let c = parseInt(match[3], 10);
+    const k = match[4].slice(1, -1).split("|");
+
+    while (c--) {
+      const key =
+        c < a
+          ? c.toString(a)
+          : (function (n, radix) {
+              const chars =
+                "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+              let res = "";
+              do {
+                res = chars[n % radix] + res;
+                n = Math.floor(n / radix);
+              } while (n > 0);
+              return res;
+            })(c, a);
+
+      if (k[c]) {
+        p = p.replace(new RegExp("\\b" + key + "\\b", "g"), k[c]);
+      }
+    }
+    return p;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extracts direct ad-free HLS stream from Vidhide / Filedon embed pages.
+ */
+export async function extractVidhideDirectStream(embedUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(embedUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html",
+      },
+      signal: AbortSignal.timeout(3500),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const unpacked = unpackDeanEdwards(html);
+    if (!unpacked) return null;
+
+    const m3u8Match = unpacked.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/);
+    return m3u8Match ? m3u8Match[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Extracts direct ad-free HLS / MP4 stream from ok.ru embed page.
  */
 export async function extractOkRuDirectStream(
@@ -525,6 +591,25 @@ export async function getAnimasuPlaybackSources(params: {
       } catch {
         /* fallback to embed */
       }
+    } else if (/vidhide|filedon/i.test(cleanUrl)) {
+      // Try extracting direct ad-free HLS stream if it's Vidhide / Filedon
+      try {
+        const directHls = await extractVidhideDirectStream(cleanUrl);
+        if (directHls) {
+          directSources.push({
+            id: `animasu-${targetEp.episodeSlug}-${i}-vidhide-direct`,
+            quality,
+            format: "HLS",
+            codec: "H264",
+            language: "id",
+            url: directHls,
+            label: `Sub Indo (${cleanLabel} - Bebas Iklan)`,
+            status: "ACTIVE",
+          });
+        }
+      } catch {
+        /* fallback to embed */
+      }
     }
 
     sources.push({
@@ -555,6 +640,24 @@ export async function getAnimasuPlaybackSources(params: {
               codec: "H264",
               language: "id",
               url: (direct.hls || direct.mp4)!,
+              label: "Sub Indo (Default - Bebas Iklan)",
+              status: "ACTIVE",
+            });
+          }
+        } catch {
+          /* fallback to embed */
+        }
+      } else if (/vidhide|filedon/i.test(fallbackUrl)) {
+        try {
+          const directHls = await extractVidhideDirectStream(fallbackUrl);
+          if (directHls) {
+            directSources.push({
+              id: `animasu-${targetEp.episodeSlug}-default-vidhide-direct`,
+              quality: 1080,
+              format: "HLS",
+              codec: "H264",
+              language: "id",
+              url: directHls,
               label: "Sub Indo (Default - Bebas Iklan)",
               status: "ACTIVE",
             });
